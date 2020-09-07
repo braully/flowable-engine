@@ -42,6 +42,8 @@ import org.flowable.variable.service.impl.persistence.entity.VariableInitializin
 import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntity;
 import org.flowable.variable.service.impl.persistence.entity.VariableScopeImpl;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 /**
  * @author Tom Baeyens
  * @author Joram Barrez
@@ -85,6 +87,7 @@ public class TaskEntityImpl extends AbstractTaskServiceVariableScopeEntity imple
     protected String subScopeId;
     protected String scopeType;
     protected String scopeDefinitionId;
+    protected String propagatedStageInstanceId;
 
     protected String taskDefinitionKey;
     protected String formKey;
@@ -148,6 +151,9 @@ public class TaskEntityImpl extends AbstractTaskServiceVariableScopeEntity imple
         if (scopeDefinitionId != null) {
             persistentState.put("scopeDefinitionId", this.scopeDefinitionId);
         }
+        if (propagatedStageInstanceId != null) {
+            persistentState.put("propagatedStageInstanceId", propagatedStageInstanceId);
+        }
         if (createTime != null) {
             persistentState.put("createTime", this.createTime);
         }
@@ -208,10 +214,15 @@ public class TaskEntityImpl extends AbstractTaskServiceVariableScopeEntity imple
             variableInstance.setProcessDefinitionId(this.processDefinitionId);
         }
     }
+    
+    @Override
+    protected void addLoggingSessionInfo(ObjectNode loggingNode) {
+        // TODO
+    }
 
     @Override
     protected List<VariableInstanceEntity> loadVariableInstances() {
-        return CommandContextUtil.getVariableInstanceEntityManager().findVariableInstancesByTaskId(id);
+        return CommandContextUtil.getVariableService().createInternalVariableInstanceQuery().taskId(id).list();
     }
     
     @Override
@@ -388,9 +399,12 @@ public class TaskEntityImpl extends AbstractTaskServiceVariableScopeEntity imple
         if (commandContext == null) {
             throw new FlowableException("lazy loading outside command context");
         }
-        VariableInstanceEntity variableInstance = CommandContextUtil.getVariableInstanceEntityManager().findVariableInstanceByTaskAndName(id, variableName);
 
-        return variableInstance;
+        return CommandContextUtil.getVariableService()
+                .createInternalVariableInstanceQuery()
+                .taskId(id)
+                .name(variableName)
+                .singleResult();
     }
 
     @Override
@@ -399,7 +413,11 @@ public class TaskEntityImpl extends AbstractTaskServiceVariableScopeEntity imple
         if (commandContext == null) {
             throw new FlowableException("lazy loading outside command context");
         }
-        return CommandContextUtil.getVariableInstanceEntityManager().findVariableInstancesByTaskAndNames(id, variableNames);
+        return CommandContextUtil.getVariableService()
+                .createInternalVariableInstanceQuery()
+                .taskId(id)
+                .names(variableNames)
+                .list();
     }
 
     // regular getters and setters ////////////////////////////////////////////////////////
@@ -528,6 +546,16 @@ public class TaskEntityImpl extends AbstractTaskServiceVariableScopeEntity imple
     @Override
     public void setScopeDefinitionId(String scopeDefinitionId) {
         this.scopeDefinitionId = scopeDefinitionId;
+    }
+
+    @Override
+    public void setPropagatedStageInstanceId(String propagatedStageInstanceId) {
+        this.propagatedStageInstanceId = propagatedStageInstanceId;
+    }
+
+    @Override
+    public String getPropagatedStageInstanceId() {
+        return propagatedStageInstanceId;
     }
 
     @Override
@@ -748,6 +776,7 @@ public class TaskEntityImpl extends AbstractTaskServiceVariableScopeEntity imple
         this.tenantId = tenantId;
     }
 
+    @Override
     public List<VariableInstanceEntity> getQueryVariables() {
         if (queryVariables == null && Context.getCommandContext() != null) {
             queryVariables = new VariableInitializingList();

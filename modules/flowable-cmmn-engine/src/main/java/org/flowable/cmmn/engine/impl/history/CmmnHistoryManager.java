@@ -14,6 +14,7 @@ package org.flowable.cmmn.engine.impl.history;
 
 import java.util.Date;
 
+import org.flowable.cmmn.api.repository.CaseDefinition;
 import org.flowable.cmmn.engine.impl.persistence.entity.CaseInstanceEntity;
 import org.flowable.cmmn.engine.impl.persistence.entity.MilestoneInstanceEntity;
 import org.flowable.cmmn.engine.impl.persistence.entity.PlanItemInstanceEntity;
@@ -34,9 +35,11 @@ public interface CmmnHistoryManager {
     
     void recordUpdateCaseInstanceName(CaseInstanceEntity caseInstanceEntity, String name);
 
+    void recordUpdateBusinessKey(CaseInstanceEntity caseInstanceEntity, String businessKey);
+
     void recordMilestoneReached(MilestoneInstanceEntity milestoneInstanceEntity);
 
-    void recordHistoricCaseInstanceDeleted(String caseInstanceId);
+    void recordHistoricCaseInstanceDeleted(String caseInstanceId, String tenantId);
 
     void recordIdentityLinkCreated(IdentityLinkEntity identityLink);
 
@@ -59,8 +62,12 @@ public interface CmmnHistoryManager {
     void recordTaskInfoChange(TaskEntity taskEntity, Date changeTime);
 
     void recordPlanItemInstanceCreated(PlanItemInstanceEntity planItemInstanceEntity);
+    
+    void recordPlanItemInstanceUpdated(PlanItemInstanceEntity planItemInstanceEntity);
 
     void recordPlanItemInstanceAvailable(PlanItemInstanceEntity planItemInstanceEntity);
+
+    void recordPlanItemInstanceUnavailable(PlanItemInstanceEntity planItemInstanceEntity);
 
     void recordPlanItemInstanceEnabled(PlanItemInstanceEntity planItemInstanceEntity);
 
@@ -77,6 +84,8 @@ public interface CmmnHistoryManager {
     void recordPlanItemInstanceTerminated(PlanItemInstanceEntity planItemInstanceEntity);
 
     void recordPlanItemInstanceExit(PlanItemInstanceEntity planItemInstanceEntity);
+    
+    void updateCaseDefinitionIdInHistory(CaseDefinition caseDefinition, CaseInstanceEntity caseInstance);
 
     /**
      * Record historic user task log entry

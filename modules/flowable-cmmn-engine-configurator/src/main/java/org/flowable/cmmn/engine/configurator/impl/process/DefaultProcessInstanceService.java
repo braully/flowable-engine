@@ -13,6 +13,7 @@
 package org.flowable.cmmn.engine.configurator.impl.process;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -30,6 +31,7 @@ import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.runtime.ProcessInstanceBuilder;
+import org.flowable.form.api.FormInfo;
 
 /**
  * @author Joram Barrez
@@ -54,21 +56,28 @@ public class DefaultProcessInstanceService implements ProcessInstanceService {
     }
 
     @Override
-    public String startProcessInstanceByKey(String processDefinitionKey, String predefinedProcessInstanceId,
-        String tenantId, Boolean fallbackToDefaultTenant, Map<String, Object> inParametersMap) {
+    public String startProcessInstanceByKey(String processDefinitionKey, String predefinedProcessInstanceId, String stageInstanceId,
+            String tenantId, Boolean fallbackToDefaultTenant, String parentDeploymentId, Map<String, Object> inParametersMap, String businessKey,
+            Map<String, Object> variableFormVariables, FormInfo variableFormInfo, String variableFormOutcome) {
         
-        return startProcessInstanceByKey(processDefinitionKey, predefinedProcessInstanceId, null, tenantId, fallbackToDefaultTenant, inParametersMap);
+        return startProcessInstanceByKey(processDefinitionKey, predefinedProcessInstanceId, null, stageInstanceId, tenantId, fallbackToDefaultTenant,
+                parentDeploymentId, inParametersMap, businessKey, variableFormVariables, variableFormInfo, variableFormOutcome);
     }
 
     @Override
-    public String startProcessInstanceByKey(String processDefinitionKey, String predefinedProcessInstanceId, 
-                    String planItemInstanceId, String tenantId, Boolean fallbackToDefaultTenant, Map<String, Object> inParametersMap) {
+    public String startProcessInstanceByKey(String processDefinitionKey, String predefinedProcessInstanceId, String planItemInstanceId, String stageInstanceId,
+            String tenantId, Boolean fallbackToDefaultTenant, String parentDeploymentId, Map<String, Object> inParametersMap, String businessKey,
+            Map<String, Object> variableFormVariables, FormInfo variableFormInfo, String variableFormOutcome) {
         
         ProcessInstanceBuilder processInstanceBuilder = processEngineConfiguration.getRuntimeService().createProcessInstanceBuilder();
         processInstanceBuilder.processDefinitionKey(processDefinitionKey);
         if (tenantId != null) {
             processInstanceBuilder.tenantId(tenantId);
             processInstanceBuilder.overrideProcessDefinitionTenantId(tenantId);
+        }
+
+        if (parentDeploymentId != null) {
+            processInstanceBuilder.processDefinitionParentDeploymentId(parentDeploymentId);
         }
         
         processInstanceBuilder.predefineProcessInstanceId(predefinedProcessInstanceId);
@@ -84,6 +93,18 @@ public class DefaultProcessInstanceService implements ProcessInstanceService {
 
         if (fallbackToDefaultTenant != null && fallbackToDefaultTenant) {
             processInstanceBuilder.fallbackToDefaultTenant();
+        }
+
+        if (businessKey != null) {
+            processInstanceBuilder.businessKey(businessKey);
+        }
+
+        if (stageInstanceId != null) {
+            processInstanceBuilder.stageInstanceId(stageInstanceId);
+        }
+
+        if (variableFormInfo != null) {
+            processInstanceBuilder.formVariables(variableFormVariables, variableFormInfo, variableFormOutcome);
         }
 
         ProcessInstance processInstance = processInstanceBuilder.start();
@@ -105,7 +126,9 @@ public class DefaultProcessInstanceService implements ProcessInstanceService {
         
         FlowElement flowElement = execution.getCurrentFlowElement();
         if (!(flowElement instanceof CaseServiceTask)) {
-            throw new FlowableException("No execution could be found with a case service task for id " + executionId);
+            // The execution already processed this stage, there is no need to copy parameters anymore.
+            // One possible reason for this is that the case task was terminated by a boundary event.
+            return Collections.emptyList();
         }
         
         List<IOParameter> cmmnParameters = new ArrayList<>();
@@ -126,7 +149,17 @@ public class DefaultProcessInstanceService implements ProcessInstanceService {
 
     @Override
     public void deleteProcessInstance(String processInstanceId) {
-        processEngineConfiguration.getRuntimeService().deleteProcessInstance(processInstanceId, DELETE_REASON);
+        processEngineConfiguration.getCommandExecutor().execute(commandContext -> {
+            
+            ExecutionEntity processInstanceEntity = CommandContextUtil.getExecutionEntityManager(commandContext).findById(processInstanceId);
+            if (processInstanceEntity == null || processInstanceEntity.isDeleted()) {
+                return null;
+            }
+
+            CommandContextUtil.getExecutionEntityManager(commandContext).deleteProcessInstance(processInstanceEntity.getProcessInstanceId(), DELETE_REASON, false);
+            
+            return null;
+        });
     }
 
     @Override

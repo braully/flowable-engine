@@ -14,7 +14,11 @@ package org.flowable.validation.validator.impl;
 
 import java.util.List;
 
+import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
+import org.flowable.bpmn.model.ConditionalEventDefinition;
+import org.flowable.bpmn.model.ErrorEventDefinition;
+import org.flowable.bpmn.model.EscalationEventDefinition;
 import org.flowable.bpmn.model.EventDefinition;
 import org.flowable.bpmn.model.EventSubProcess;
 import org.flowable.bpmn.model.MessageEventDefinition;
@@ -40,7 +44,9 @@ public class EventSubprocessValidator extends ProcessLevelValidator {
             for (StartEvent startEvent : startEvents) {
                 if (startEvent.getEventDefinitions() != null && !startEvent.getEventDefinitions().isEmpty()) {
                     EventDefinition eventDefinition = startEvent.getEventDefinitions().get(0);
-                    if (!(eventDefinition instanceof org.flowable.bpmn.model.ErrorEventDefinition) &&
+                    if (!(eventDefinition instanceof ConditionalEventDefinition) &&
+                            !(eventDefinition instanceof ErrorEventDefinition) &&
+                            !(eventDefinition instanceof EscalationEventDefinition) &&
                             !(eventDefinition instanceof MessageEventDefinition) &&
                             !(eventDefinition instanceof SignalEventDefinition) &&
                             !(eventDefinition instanceof TimerEventDefinition)) {
@@ -49,6 +55,11 @@ public class EventSubprocessValidator extends ProcessLevelValidator {
                                 "start event of event subprocess must be of type 'error', 'timer', 'message' or 'signal'");
                     }
                 }
+            }
+
+            List<BoundaryEvent> boundaryEvents = eventSubprocess.getBoundaryEvents();
+            if (boundaryEvents != null && !boundaryEvents.isEmpty()) {
+                addWarning(errors, Problems.EVENT_SUBPROCESS_BOUNDARY_EVENT, process, eventSubprocess, "event sub process cannot have attached boundary events");
             }
 
         }

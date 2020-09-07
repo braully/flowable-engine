@@ -19,9 +19,9 @@ import java.util.List;
 
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
 import org.flowable.common.engine.api.scope.ScopeTypes;
-import org.flowable.common.engine.impl.query.AbstractQuery;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.interceptor.CommandExecutor;
+import org.flowable.common.engine.impl.query.AbstractQuery;
 import org.flowable.job.api.Job;
 import org.flowable.job.api.TimerJobQuery;
 import org.flowable.job.service.impl.util.CommandContextUtil;
@@ -38,10 +38,15 @@ public class TimerJobQueryImpl extends AbstractQuery<TimerJobQuery, Job> impleme
     protected String executionId;
     protected String handlerType;
     protected String processDefinitionId;
+    protected String category;
+    protected String categoryLike;
+    protected String elementId;
+    protected String elementName;
     protected String scopeId;
     protected String subScopeId;
     protected String scopeType;
     protected String scopeDefinitionId;
+    protected String correlationId;
     protected boolean executable;
     protected boolean onlyTimers;
     protected boolean onlyMessages;
@@ -94,6 +99,42 @@ public class TimerJobQueryImpl extends AbstractQuery<TimerJobQuery, Job> impleme
     }
     
     @Override
+    public TimerJobQueryImpl category(String category) {
+        if (category == null) {
+            throw new FlowableIllegalArgumentException("Provided category is null");
+        }
+        this.category = category;
+        return this;
+    }
+    
+    @Override
+    public TimerJobQueryImpl categoryLike(String categoryLike) {
+        if (categoryLike == null) {
+            throw new FlowableIllegalArgumentException("Provided categoryLike is null");
+        }
+        this.categoryLike = categoryLike;
+        return this;
+    }
+    
+    @Override
+    public TimerJobQueryImpl elementId(String elementId) {
+        if (elementId == null) {
+            throw new FlowableIllegalArgumentException("Provided element id is null");
+        }
+        this.elementId = elementId;
+        return this;
+    }
+    
+    @Override
+    public TimerJobQueryImpl elementName(String elementName) {
+        if (elementName == null) {
+            throw new FlowableIllegalArgumentException("Provided element name is null");
+        }
+        this.elementName = elementName;
+        return this;
+    }
+    
+    @Override
     public TimerJobQueryImpl scopeId(String scopeId) {
         if (scopeId == null) {
             throw new FlowableIllegalArgumentException("Provided scope id is null");
@@ -104,7 +145,7 @@ public class TimerJobQueryImpl extends AbstractQuery<TimerJobQuery, Job> impleme
     
     @Override
     public TimerJobQueryImpl subScopeId(String subScopeId) {
-        if (scopeId == null) {
+        if (subScopeId == null) {
             throw new FlowableIllegalArgumentException("Provided sub scope id is null");
         }
         this.subScopeId = subScopeId;
@@ -156,6 +197,15 @@ public class TimerJobQueryImpl extends AbstractQuery<TimerJobQuery, Job> impleme
         }
         subScopeId(planItemInstanceId);
         scopeType(ScopeTypes.CMMN);
+        return this;
+    }
+
+    @Override
+    public TimerJobQueryImpl correlationId(String correlationId) {
+        if (correlationId == null) {
+            throw new FlowableIllegalArgumentException("Provided correlationId is null");
+        }
+        this.correlationId = correlationId;
         return this;
     }
 
@@ -344,16 +394,28 @@ public class TimerJobQueryImpl extends AbstractQuery<TimerJobQuery, Job> impleme
         return withoutTenantId;
     }
 
-    public static long getSerialversionuid() {
-        return serialVersionUID;
-    }
-
     public String getId() {
         return id;
     }
 
     public String getProcessDefinitionId() {
         return processDefinitionId;
+    }
+    
+    public String getCategory() {
+        return category;
+    }
+
+    public String getCategoryLike() {
+        return categoryLike;
+    }
+
+    public String getElementId() {
+        return elementId;
+    }
+
+    public String getElementName() {
+        return elementName;
     }
     
     public String getScopeId() {
@@ -370,6 +432,10 @@ public class TimerJobQueryImpl extends AbstractQuery<TimerJobQuery, Job> impleme
 
     public String getScopeDefinitionId() {
         return scopeDefinitionId;
+    }
+
+    public String getCorrelationId() {
+        return correlationId;
     }
 
     public boolean isOnlyTimers() {

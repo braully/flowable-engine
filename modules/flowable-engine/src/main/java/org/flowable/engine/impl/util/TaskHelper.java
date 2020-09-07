@@ -27,6 +27,8 @@ import org.flowable.common.engine.impl.el.ExpressionManager;
 import org.flowable.common.engine.impl.history.HistoryLevel;
 import org.flowable.common.engine.impl.identity.Authentication;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
+import org.flowable.common.engine.impl.logging.LoggingSessionConstants;
+import org.flowable.common.engine.impl.persistence.entity.ByteArrayRef;
 import org.flowable.engine.compatibility.Flowable5CompatibilityHandler;
 import org.flowable.engine.delegate.TaskListener;
 import org.flowable.engine.delegate.event.impl.FlowableEventBuilder;
@@ -47,7 +49,6 @@ import org.flowable.task.service.impl.persistence.CountingTaskEntity;
 import org.flowable.task.service.impl.persistence.entity.HistoricTaskInstanceEntity;
 import org.flowable.task.service.impl.persistence.entity.TaskEntity;
 import org.flowable.variable.service.event.impl.FlowableVariableEventBuilder;
-import org.flowable.variable.service.impl.persistence.entity.VariableByteArrayRef;
 import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntity;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -109,6 +110,21 @@ public class TaskHelper {
                         FlowableEventBuilder.createEntityEvent(FlowableEngineEventType.TASK_COMPLETED, taskEntity));
             }
         }
+        
+        if (processEngineConfiguration.isLoggingSessionEnabled() && taskEntity.getExecutionId() != null) {
+            String taskLabel = null;
+            if (StringUtils.isNotEmpty(taskEntity.getName())) {
+                taskLabel = taskEntity.getName();
+            } else {
+                taskLabel = taskEntity.getId();
+            }
+        
+            ExecutionEntity execution = CommandContextUtil.getExecutionEntityManager().findById(taskEntity.getExecutionId());
+            if (execution != null) {
+                BpmnLoggingSessionUtil.addLoggingData(LoggingSessionConstants.TYPE_USER_TASK_COMPLETE, 
+                                "User task '" + taskLabel + "' completed", taskEntity, execution);
+            }
+        }
 
         deleteTask(taskEntity, null, false, true, true);
 
@@ -156,7 +172,7 @@ public class TaskHelper {
         }
     }
 
-    public static void insertTask(TaskEntity taskEntity, ExecutionEntity execution, boolean fireCreateEvent) {
+    public static void insertTask(TaskEntity taskEntity, ExecutionEntity execution, boolean fireCreateEvent, boolean addEntityLinks) {
         // Inherit tenant id (if applicable)
         if (execution != null && execution.getTenantId() != null) {
             taskEntity.setTenantId(execution.getTenantId());
@@ -171,9 +187,18 @@ public class TaskHelper {
 
         insertTask(taskEntity, fireCreateEvent);
 
-        if (execution != null && CountingEntityUtil.isExecutionRelatedEntityCountEnabled(execution)) {
-            CountingExecutionEntity countingExecutionEntity = (CountingExecutionEntity) execution;
-            countingExecutionEntity.setTaskCount(countingExecutionEntity.getTaskCount() + 1);
+        if (execution != null) {
+
+            if (CountingEntityUtil.isExecutionRelatedEntityCountEnabled(execution)) {
+                CountingExecutionEntity countingExecutionEntity = (CountingExecutionEntity) execution;
+                countingExecutionEntity.setTaskCount(countingExecutionEntity.getTaskCount() + 1);
+            }
+
+            if (addEntityLinks) {
+                EntityLinkUtil.createEntityLinks(execution.getProcessInstanceId(), execution.getId(),
+                        taskEntity.getTaskDefinitionKey(), taskEntity.getId(), ScopeTypes.TASK);
+            }
+
         }
 
         FlowableEventDispatcher eventDispatcher = CommandContextUtil.getEventDispatcher();
@@ -320,7 +345,7 @@ public class TaskHelper {
                 || (isTaskRelatedEntityCountEnabled && ((CountingTaskEntity) task).getVariableCount() > 0)) {
             
             Map<String, VariableInstanceEntity> taskVariables = task.getVariableInstanceEntities();
-            ArrayList<VariableByteArrayRef> variableByteArrayRefs = new ArrayList<>();
+            List<ByteArrayRef> variableByteArrayRefs = new ArrayList<>();
             for (VariableInstanceEntity variableInstanceEntity : taskVariables.values()) {
                 if (fireEvents) {
                     eventDispatcher.dispatchEvent(FlowableVariableEventBuilder.createEntityEvent(FlowableEngineEventType.ENTITY_DELETED, variableInstanceEntity));
@@ -330,7 +355,7 @@ public class TaskHelper {
                 }
             }
             
-            for (VariableByteArrayRef variableByteArrayRef : variableByteArrayRefs) {
+            for (ByteArrayRef variableByteArrayRef : variableByteArrayRefs) {
                 CommandContextUtil.getByteArrayEntityManager(commandContext).deleteByteArrayById(variableByteArrayRef.getId());
             }
             

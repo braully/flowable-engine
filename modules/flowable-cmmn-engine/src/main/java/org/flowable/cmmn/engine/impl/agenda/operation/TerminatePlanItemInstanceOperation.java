@@ -23,22 +23,27 @@ import org.flowable.common.engine.impl.interceptor.CommandContext;
  */
 public class TerminatePlanItemInstanceOperation extends AbstractMovePlanItemInstanceToTerminalStateOperation {
 
-    public TerminatePlanItemInstanceOperation(CommandContext commandContext, PlanItemInstanceEntity planItemInstanceEntity) {
+    protected String exitType;
+    protected String exitEventType;
+
+    public TerminatePlanItemInstanceOperation(CommandContext commandContext, PlanItemInstanceEntity planItemInstanceEntity, String exitType, String exitEventType) {
         super(commandContext, planItemInstanceEntity);
+        this.exitType = exitType;
+        this.exitEventType = exitEventType;
     }
 
     @Override
-    protected String getNewState() {
+    public String getNewState() {
         return PlanItemInstanceState.TERMINATED;
     }
 
     @Override
-    protected String getLifeCycleTransition() {
+    public String getLifeCycleTransition() {
         return PlanItemTransition.TERMINATE;
     }
     
     @Override
-    protected boolean isEvaluateRepetitionRule() {
+    public boolean isEvaluateRepetitionRule() {
         return false;
     }
     
@@ -48,5 +53,22 @@ public class TerminatePlanItemInstanceOperation extends AbstractMovePlanItemInst
         planItemInstanceEntity.setTerminatedTime(planItemInstanceEntity.getEndedTime());
         CommandContextUtil.getCmmnHistoryManager(commandContext).recordPlanItemInstanceTerminated(planItemInstanceEntity);
     }
-    
+
+    @Override
+    public String getOperationName() {
+        return "[Terminate plan item]";
+    }
+
+    public String getExitType() {
+        return exitType;
+    }
+    public void setExitType(String exitType) {
+        this.exitType = exitType;
+    }
+    public String getExitEventType() {
+        return exitEventType;
+    }
+    public void setExitEventType(String exitEventType) {
+        this.exitEventType = exitEventType;
+    }
 }

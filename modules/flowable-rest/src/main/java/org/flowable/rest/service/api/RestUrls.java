@@ -68,6 +68,10 @@ public final class RestUrls {
     public static final String SEGMENT_SUSPENDED_JOBS = "suspended-jobs";
     public static final String SEGMENT_DEADLETTER_JOBS = "deadletter-jobs";
     public static final String SEGMENT_JOB_EXCEPTION_STACKTRACE = "exception-stacktrace";
+    public static final String SEGMENT_BATCHES = "batches";
+    public static final String SEGMENT_BATCH_DOCUMENT = "batch-document";
+    public static final String SEGMENT_BATCH_PARTS = "batch-parts";
+    public static final String SEGMENT_BATCH_PART_RESULT_DOCUMENT = "result-document";
     public static final String SEGMENT_USERS = "users";
     public static final String SEGMENT_GROUPS = "groups";
     public static final String SEGMENT_PICTURE = "picture";
@@ -84,7 +88,7 @@ public final class RestUrls {
     public static final String SEGMENT_SIGNALS = "signals";
     public static final String SEGMENT_IMAGE = "image";
     public static final String SEGMENT_START_FORM = "start-form";
-    public static final String SEGMENT_DECISION_TABLES = "decision-tables";
+    public static final String SEGMENT_DECISIONS = "decisions";
     public static final String SEGMENT_FORM_DEFINITIONS = "form-definitions";
 
     /**
@@ -153,9 +157,10 @@ public final class RestUrls {
     public static final String[] URL_PROCESS_DEFINITION_START_FORM = { SEGMENT_REPOSITORY_RESOURCES, SEGMENT_PROCESS_DEFINITION_RESOURCE, "{0}", SEGMENT_START_FORM };
 
     /**
-     * URL template for the image of a process definition: <i>repository/process-definitions/{0:processDefinitionId}/decision-tables</i>
+     * URL template for the image of a process definition: <i>repository/process-definitions/{0:processDefinitionId}/decisions</i>
      */
-    public static final String[] URL_PROCESS_DEFINITION_DECISION_TABLES_COLLECTION = { SEGMENT_REPOSITORY_RESOURCES, SEGMENT_PROCESS_DEFINITION_RESOURCE, "{0}", SEGMENT_DECISION_TABLES };
+    public static final String[] URL_PROCESS_DEFINITION_DECISION_COLLECTION = { SEGMENT_REPOSITORY_RESOURCES, SEGMENT_PROCESS_DEFINITION_RESOURCE, "{0}",
+        SEGMENT_DECISIONS };
 
     /**
      * URL template for the image of a process definition: <i>repository/process-definitions/{0:processDefinitionId}/form-definitions</i>
@@ -543,6 +548,26 @@ public final class RestUrls {
      * URL template for the collection of timer jobs: <i>management/deadletter-jobs</i>
      */
     public static final String[] URL_DEADLETTER_JOB_COLLECTION = { SEGMENT_MANAGEMENT_RESOURCES, SEGMENT_DEADLETTER_JOBS };
+    
+    /**
+     * URL template for a single batch: <i>management/batches/{0:batchId}</i>
+     */
+    public static final String[] URL_BATCH = { SEGMENT_MANAGEMENT_RESOURCES, SEGMENT_BATCHES, "{0}" };
+    
+    /**
+     * URL template for the collection of batches: <i>management/batches</i>
+     */
+    public static final String[] URL_BATCH_COLLECTION = { SEGMENT_MANAGEMENT_RESOURCES, SEGMENT_BATCHES };
+    
+    /**
+     * URL template for a single batch part: <i>management/batches/{0:batchId}</i>
+     */
+    public static final String[] URL_BATCH_PART = { SEGMENT_MANAGEMENT_RESOURCES, SEGMENT_BATCH_PARTS, "{0}" };
+    
+    /**
+     * URL template for the collection of batches: <i>management/batches/{0:batchId}/batch-parts</i>
+     */
+    public static final String[] URL_BATCH_PART_COLLECTION = { SEGMENT_MANAGEMENT_RESOURCES, SEGMENT_BATCH_PARTS, "{0}", SEGMENT_BATCH_PARTS };
 
     /**
      * URL template for a single event subscription: <i>runtime/event-subscriptions/{0:eventSubscriptionId}</i>

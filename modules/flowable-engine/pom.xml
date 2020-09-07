@@ -10,7 +10,7 @@
         <groupId>org.flowable</groupId>
         <artifactId>flowable-root</artifactId>
         <relativePath>../..</relativePath>
-        <version>6.5.0-SNAPSHOT</version>
+        <version>6.6.0-SNAPSHOT</version>
     </parent>
 
     <dependencies>
@@ -48,6 +48,14 @@
         </dependency>
         <dependency>
             <groupId>org.flowable</groupId>
+            <artifactId>flowable-event-registry</artifactId>
+        </dependency>
+       <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-event-registry-configurator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flowable</groupId>
             <artifactId>flowable-eventsubscription-service</artifactId>
         </dependency>
         <dependency>
@@ -57,6 +65,10 @@
         <dependency>
             <groupId>org.flowable</groupId>
             <artifactId>flowable-job-service</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-batch-service</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flowable</groupId>
@@ -89,6 +101,10 @@
         <dependency>
             <groupId>org.flowable</groupId>
             <artifactId>flowable-content-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-http-common</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -157,9 +173,14 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>javax.xml.bind</groupId>
             <artifactId>jaxb-api</artifactId>
-          <scope>test</scope>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
@@ -235,6 +256,16 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>net.javacrumbs.json-unit</groupId>
+            <artifactId>json-unit-assertj</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Required for testing JTA -->
         <dependency>
@@ -275,6 +306,7 @@
         </flowable.osgi.import.additional>
         <exclude.tests>nothing-to-exclude</exclude.tests>
         <exclude.tests2>nothing-to-exclude</exclude.tests2>
+        <exclude.tests3>nothing-to-exclude</exclude.tests3>
     </properties>
 
     <build>
@@ -287,8 +319,9 @@
                         <exclude>**/RepeatingServiceTaskTest.java</exclude>
                         <exclude>${exclude.tests}</exclude>
                         <exclude>${exclude.tests2}</exclude>
+                        <exclude>${exclude.tests3}</exclude>
                     </excludes>
-                    <argLine>${argLine} -Xmx3g</argLine>
+                    <argLine>${argLine} -Xmx4g</argLine>
                 </configuration>
             </plugin>
             <plugin>
@@ -372,7 +405,6 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-jar-plugin</artifactId>
-                        <version>2.2</version>
                         <executions>
                             <execution>
                                 <goals>
@@ -396,20 +428,23 @@
             </properties>
         </profile>
         <profile>
-            <id>distro</id>
+            <id>cleanDb</id>
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <version>2.1.1</version>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
                         <executions>
                             <execution>
-                                <id>attach-sources</id>
-                                <phase>package</phase>
+                                <id>drop-idm-schema</id>
+                                <phase>prepare-package</phase>
                                 <goals>
-                                    <goal>jar-no-fork</goal>
+                                    <goal>java</goal>
                                 </goals>
+                                <configuration>
+                                    <mainClass>org.flowable.engine.impl.db.DbSchemaDrop</mainClass>
+                                    <classpathScope>test</classpathScope>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
@@ -558,12 +593,28 @@
                                         <echo
                                             message="updating flowable configuration to db ${databasemssql}" />
                                         <copy
-                                            file="${basedir}/../../qa/db/mssql/flowable.cfg.xml"
-                                            todir="target/test-classes"
+                                            file="${basedir}/../../qa/db/flowable.mssql.cfg.xml"
+                                            tofile="target/test-classes/flowable.cfg.xml"
                                             overwrite="true">
                                             <filterset
                                                 filtersfile="${user.home}/.flowable/jdbc/build.flowable6.${databasemssql}.properties" />
                                         </copy>
+                                    </tasks>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>database-test-drop-schema</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <configuration>
+                                    <tasks>
+                                        <echo
+                                            message="dropping schema in ${databasemssql}" />
+                                        <java
+                                            classname="org.flowable.engine.impl.db.DbSchemaDrop"
+                                            classpathref="maven.test.classpath" />
                                     </tasks>
                                 </configuration>
                             </execution>
@@ -583,6 +634,7 @@
             <properties>
                 <exclude.tests>**/ProcessInstanceMigration*Test.java</exclude.tests>
                 <exclude.tests2>**/ChangeState*Test.java</exclude.tests2>
+                <exclude.tests3>**/Historic*DeleteTest.java</exclude.tests3>
             </properties>
             <build>
                 <plugins>
@@ -643,6 +695,7 @@
             <properties>
                 <exclude.tests>**/ProcessInstanceMigration*Test.java</exclude.tests>
                 <exclude.tests2>**/ChangeState*Test.java</exclude.tests2>
+                <exclude.tests3>**/Historic*DeleteTest.java</exclude.tests3>
             </properties>
             <build>
                 <plugins>
@@ -704,6 +757,7 @@
             <properties>
                 <exclude.tests>**/ProcessInstanceMigration*Test.java</exclude.tests>
                 <exclude.tests2>**/ChangeState*Test.java</exclude.tests2>
+                <exclude.tests3>**/Historic*DeleteTest.java</exclude.tests3>
             </properties>
             <build>
                 <plugins>
@@ -798,6 +852,7 @@
                                 <exclude>**/ProcessDiagramRetrievalTest.java</exclude>
                                 <exclude>org/flowable/standalone/**</exclude>
                             </excludes>
+                            <argLine>${argLine} -Xmx4g</argLine>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -871,6 +926,7 @@
                                 <exclude>**/ProcessDiagramRetrievalTest.java</exclude>
                                 <exclude>org/flowable/standalone/**</exclude>
                             </excludes>
+                            <argLine>${argLine} -Xmx4g</argLine>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -926,6 +982,7 @@
                                 <exclude>org/flowable/standalone/**</exclude>
                                 <exclude>**/FlowableJupiterSubclassTest.java</exclude>
                             </excludes>
+                            <argLine>${argLine} -Xmx4g</argLine>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -1116,6 +1173,7 @@
                                 <exclude>org/flowable/standalone/**</exclude>
                                 <exclude>**/FlowableJupiterSubclassTest.java</exclude>
                             </excludes>
+                            <argLine>${argLine} -Xmx4g</argLine>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -1177,6 +1235,7 @@
                                 <exclude>**/ProcessInstanceLogQueryTest.java</exclude>
                                 <exclude>**/FlowableJupiterSubclassTest.java</exclude>
                             </excludes>
+                            <argLine>${argLine} -Xmx4g</argLine>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -1221,7 +1280,10 @@
                                 <exclude>**/HistoricTaskInstanceUpdateTest.java</exclude> <!-- http://jira.codehaus.org/browse/ACT-485 -->
                                 <exclude>**/RepeatingServiceTaskTest.java</exclude>
                                 <exclude>org/flowable/standalone/**</exclude>
+                                <exclude>**/ProcessInstanceMigration*Test.java</exclude>
+                                <exclude>**/CacheTaskTest.java</exclude>
                             </excludes>
+                            <argLine>${argLine} -Xmx4g</argLine>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -1350,7 +1412,7 @@
             <dependencies>
                 <dependency>
                     <groupId>com.oracle.jdbc</groupId>
-                    <artifactId>ojdbc7</artifactId>
+                    <artifactId>${oracle.jdbc.artifact}</artifactId>
                     <scope>test</scope>
                 </dependency>
             </dependencies>
@@ -1367,7 +1429,7 @@
             <dependencies>
                 <dependency>
                     <groupId>com.oracle.jdbc</groupId>
-                    <artifactId>ojdbc7</artifactId>
+                    <artifactId>${oracle.jdbc.artifact}</artifactId>
                     <scope>test</scope>
                 </dependency>
             </dependencies>
@@ -1384,7 +1446,7 @@
             <dependencies>
                 <dependency>
                     <groupId>com.oracle.jdbc</groupId>
-                    <artifactId>ojdbc7</artifactId>
+                    <artifactId>${oracle.jdbc.artifact}</artifactId>
                     <scope>test</scope>
                 </dependency>
             </dependencies>

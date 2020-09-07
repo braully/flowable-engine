@@ -46,6 +46,16 @@
             "isblockingexpression": "",
             "casetaskcasereference": "",
             "fallbacktodefaulttenant": true,
+            "samedeployment": true,
+            "casetaskinparameters": {
+              "inParameters": [
+                {
+                  "source": "testSource",
+                  "target": "testTarget"
+                }
+              ]
+            },
+            "casetaskoutparameters": "",
             "isasync": "",
             "isexclusive": "",
             "requiredenabled": "",

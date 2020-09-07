@@ -24,10 +24,10 @@ import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.FlowNode;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.common.engine.impl.cfg.IdGenerator;
-import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
 import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.impl.ActivityInstanceQueryImpl;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
+import org.flowable.engine.impl.history.HistoryManager;
 import org.flowable.engine.impl.persistence.entity.data.ActivityInstanceDataManager;
 import org.flowable.engine.impl.util.CommandContextUtil;
 import org.flowable.engine.runtime.ActivityInstance;
@@ -36,58 +36,62 @@ import org.flowable.task.service.impl.persistence.entity.TaskEntity;
 /**
  * @author martin.grofcik
  */
-public class ActivityInstanceEntityManagerImpl extends AbstractEntityManager<ActivityInstanceEntity> implements ActivityInstanceEntityManager {
+public class ActivityInstanceEntityManagerImpl
+    extends AbstractProcessEngineEntityManager<ActivityInstanceEntity, ActivityInstanceDataManager>
+    implements ActivityInstanceEntityManager {
 
     protected static final String NO_ACTIVITY_ID_PREFIX = "_flow_";
     protected static final String NO_ACTIVITY_ID_SEPARATOR = "__";
 
-    protected ActivityInstanceDataManager activityInstanceDataManager;
-
     protected final boolean usePrefixId;
 
     public ActivityInstanceEntityManagerImpl(ProcessEngineConfigurationImpl processEngineConfiguration, ActivityInstanceDataManager activityInstanceDataManager) {
-        super(processEngineConfiguration);
-        this.activityInstanceDataManager = activityInstanceDataManager;
+        super(processEngineConfiguration, activityInstanceDataManager);
         this.usePrefixId = processEngineConfiguration.isUsePrefixId();
     }
 
-    @Override
-    protected DataManager<ActivityInstanceEntity> getDataManager() {
-        return activityInstanceDataManager;
-    }
-
     protected List<ActivityInstanceEntity> findUnfinishedActivityInstancesByExecutionAndActivityId(String executionId, String activityId) {
-        return activityInstanceDataManager.findUnfinishedActivityInstancesByExecutionAndActivityId(executionId, activityId);
+        return dataManager.findUnfinishedActivityInstancesByExecutionAndActivityId(executionId, activityId);
     }
     
     @Override
     public List<ActivityInstanceEntity> findActivityInstancesByExecutionAndActivityId(String executionId, String activityId) {
-        return activityInstanceDataManager.findActivityInstancesByExecutionIdAndActivityId(executionId, activityId);
+        return dataManager.findActivityInstancesByExecutionIdAndActivityId(executionId, activityId);
+    }
+    
+    @Override
+    public List<ActivityInstanceEntity> findActivityInstancesByProcessInstanceId(String processInstanceId, boolean includeDeleted) {
+        return dataManager.findActivityInstancesByProcessInstanceId(processInstanceId, includeDeleted);
+    }
+
+    @Override
+    public ActivityInstanceEntity findActivityInstanceByTaskId(String taskId) {
+        return dataManager.findActivityInstanceByTaskId(taskId);
     }
 
     @Override
     public void deleteActivityInstancesByProcessInstanceId(String processInstanceId) {
-        activityInstanceDataManager.deleteActivityInstancesByProcessInstanceId(processInstanceId);
+        dataManager.deleteActivityInstancesByProcessInstanceId(processInstanceId);
     }
 
     @Override
     public long findActivityInstanceCountByQueryCriteria(ActivityInstanceQueryImpl historicActivityInstanceQuery) {
-        return activityInstanceDataManager.findActivityInstanceCountByQueryCriteria(historicActivityInstanceQuery);
+        return dataManager.findActivityInstanceCountByQueryCriteria(historicActivityInstanceQuery);
     }
 
     @Override
     public List<ActivityInstance> findActivityInstancesByQueryCriteria(ActivityInstanceQueryImpl historicActivityInstanceQuery) {
-        return activityInstanceDataManager.findActivityInstancesByQueryCriteria(historicActivityInstanceQuery);
+        return dataManager.findActivityInstancesByQueryCriteria(historicActivityInstanceQuery);
     }
 
     @Override
     public List<ActivityInstance> findActivityInstancesByNativeQuery(Map<String, Object> parameterMap) {
-        return activityInstanceDataManager.findActivityInstancesByNativeQuery(parameterMap);
+        return dataManager.findActivityInstancesByNativeQuery(parameterMap);
     }
 
     @Override
     public long findActivityInstanceCountByNativeQuery(Map<String, Object> parameterMap) {
-        return activityInstanceDataManager.findActivityInstanceCountByNativeQuery(parameterMap);
+        return dataManager.findActivityInstanceCountByNativeQuery(parameterMap);
     }
 
     @Override
@@ -159,12 +163,12 @@ public class ActivityInstanceEntityManagerImpl extends AbstractEntityManager<Act
     public void updateActivityInstancesProcessDefinitionId(String newProcessDefinitionId, String processInstanceId) {
         ActivityInstanceQueryImpl activityQuery = new ActivityInstanceQueryImpl();
         activityQuery.processInstanceId(processInstanceId);
-        List<ActivityInstance> activities = getActivityInstanceEntityManager().findActivityInstancesByQueryCriteria(activityQuery);
+        List<ActivityInstance> activities = findActivityInstancesByQueryCriteria(activityQuery);
         if (activities != null) {
             for (ActivityInstance activityInstance : activities) {
                 ActivityInstanceEntity activityEntity = (ActivityInstanceEntity) activityInstance;
                 activityEntity.setProcessDefinitionId(newProcessDefinitionId);
-                getActivityInstanceEntityManager().update(activityEntity);
+                update(activityEntity);
             }
         }
     }
@@ -185,7 +189,7 @@ public class ActivityInstanceEntityManagerImpl extends AbstractEntityManager<Act
         ExecutionEntity executionEntity = getExecutionEntityManager().findById(taskEntity.getExecutionId());
         if (executionEntity != null) {
             if (!Objects.equals(getOriginalAssignee(taskEntity), taskEntity.getAssignee())) {
-                activityInstance = findUnfinishedActivityInstance(executionEntity);
+                activityInstance = findActivityInstanceByTaskId(taskEntity.getId());
                 if (activityInstance == null) {
                     HistoricActivityInstanceEntity historicActivityInstance = getHistoryManager().findHistoricActivityInstance(executionEntity, true);
                     if (historicActivityInstance != null) {
@@ -241,9 +245,19 @@ public class ActivityInstanceEntityManagerImpl extends AbstractEntityManager<Act
     }
 
     protected ActivityInstance recordActivityInstanceEnd(ExecutionEntity executionEntity, String deleteReason) {
-        ActivityInstanceEntity activityInstance = findUnfinishedActivityInstance(executionEntity);
+        // It is possible that we record the activity instance end twice
+        // in this case if there is no finished activity instance in the DB
+        // and there is a finished runtime one we should use the runtime one
+        // It is also OK for pre 6.4.1.2 activity instances.
+        // Since the first time we go through here we won't find anything in the cache and the DB,
+        // so we will create one from the history (this will add one to the cache).
+        // The second time we go through here, there will be nothing in the DB, but one finished one in the cache.
+        // This one should be used, in order to avoid going to the historic tables again.
+        ActivityInstanceEntity activityInstance = findUnfinishedActivityInstance(executionEntity, true);
         if (activityInstance != null) {
-            activityInstance.markEnded(deleteReason);
+            if (activityInstance.getEndTime() == null) {
+                activityInstance.markEnded(deleteReason);
+            }
         } else {
             // in the case of upgrade from 6.4.1.1 to 6.4.1.2 we have to create activityInstance for all already unfinished historicActivities
             // which are going to be ended
@@ -256,16 +270,12 @@ public class ActivityInstanceEntityManagerImpl extends AbstractEntityManager<Act
         return activityInstance;
     }
 
-    public ActivityInstanceDataManager getActivityInstanceDataManager() {
-        return activityInstanceDataManager;
-    }
-
-    public void setActivityInstanceDataManager(ActivityInstanceDataManager activityInstanceDataManager) {
-        this.activityInstanceDataManager = activityInstanceDataManager;
-    }
-
     @Override
     public ActivityInstanceEntity findUnfinishedActivityInstance(ExecutionEntity execution) {
+        return findUnfinishedActivityInstance(execution, false);
+    }
+
+    protected ActivityInstanceEntity findUnfinishedActivityInstance(ExecutionEntity execution, boolean returnNotFinishedFromCacheIfNothingInDb) {
         String activityId = getActivityIdForExecution(execution);
         if (activityId != null) {
             // No use looking for the ActivityInstance when no activityId is provided.
@@ -291,6 +301,8 @@ public class ActivityInstanceEntityManagerImpl extends AbstractEntityManager<Act
                 }
                 if (activityInstances.size() > 0) {
                     return activityInstances.get(0);
+                } else if (returnNotFinishedFromCacheIfNothingInDb) {
+                    return activityFromCache;
                 }
 
             }
@@ -300,7 +312,7 @@ public class ActivityInstanceEntityManagerImpl extends AbstractEntityManager<Act
     }
 
     protected ActivityInstanceEntity createActivityInstanceEntity(ExecutionEntity execution) {
-        IdGenerator idGenerator = getProcessEngineConfiguration().getIdGenerator();
+        IdGenerator idGenerator = engineConfiguration.getIdGenerator();
 
         String processDefinitionId = execution.getProcessDefinitionId();
         String processInstanceId = execution.getProcessInstanceId();
@@ -331,12 +343,14 @@ public class ActivityInstanceEntityManagerImpl extends AbstractEntityManager<Act
         }
         Date now = getClock().getCurrentTime();
         activityInstanceEntity.setStartTime(now);
+        
+        activityInstanceEntity.setTransactionOrder(getTransactionOrderFromCache(processInstanceId));
 
         if (execution.getTenantId() != null) {
             activityInstanceEntity.setTenantId(execution.getTenantId());
         }
 
-        getActivityInstanceEntityManager().insert(activityInstanceEntity);
+        insert(activityInstanceEntity);
         return activityInstanceEntity;
     }
 
@@ -353,6 +367,23 @@ public class ActivityInstanceEntityManagerImpl extends AbstractEntityManager<Act
         }
 
         return null;
+    }
+    
+    protected int getTransactionOrderFromCache(String processInstanceId) {
+        int transactionOrder = 1;
+        List<ActivityInstanceEntity> cachedActivityInstances = getEntityCache().findInCache(ActivityInstanceEntity.class);
+        for (ActivityInstanceEntity cachedActivityInstance : cachedActivityInstances) {
+            if (processInstanceId.equals(cachedActivityInstance.getProcessInstanceId())) {
+                
+                if (cachedActivityInstance.isInserted() && cachedActivityInstance.getTransactionOrder() != null && 
+                        cachedActivityInstance.getTransactionOrder() >= transactionOrder) {
+                    
+                    transactionOrder = cachedActivityInstance.getTransactionOrder() + 1;
+                }
+            }
+        }
+
+        return transactionOrder;
     }
 
     protected String parseActivityType(FlowElement element) {
@@ -387,6 +418,7 @@ public class ActivityInstanceEntityManagerImpl extends AbstractEntityManager<Act
         activityInstanceEntity.setAssignee(historicActivityInstance.getAssignee());
         activityInstanceEntity.setStartTime(historicActivityInstance.getStartTime());
         activityInstanceEntity.setEndTime(historicActivityInstance.getEndTime());
+        activityInstanceEntity.setTransactionOrder(historicActivityInstance.getTransactionOrder());
         activityInstanceEntity.setDeleteReason(historicActivityInstance.getDeleteReason());
         activityInstanceEntity.setDurationInMillis(historicActivityInstance.getDurationInMillis());
         activityInstanceEntity.setTenantId(historicActivityInstance.getTenantId());
@@ -397,6 +429,14 @@ public class ActivityInstanceEntityManagerImpl extends AbstractEntityManager<Act
 
     protected String getArtificialSequenceFlowId(SequenceFlow sequenceFlow) {
         return NO_ACTIVITY_ID_PREFIX + sequenceFlow.getSourceRef() + NO_ACTIVITY_ID_SEPARATOR + sequenceFlow.getTargetRef();
+    }
+
+    protected HistoryManager getHistoryManager() {
+        return engineConfiguration.getHistoryManager();
+    }
+
+    protected ExecutionEntityManager getExecutionEntityManager() {
+        return engineConfiguration.getExecutionEntityManager();
     }
 
 }

@@ -218,7 +218,7 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
     @SuppressWarnings("unchecked")
     @Override
     public List<String> findProcessInstanceIdsByProcessDefinitionId(String processDefinitionId) {
-        return getDbSqlSession().selectListNoCacheCheck("selectProcessInstanceIdsByProcessDefinitionId", processDefinitionId);
+        return getDbSqlSession().selectListNoCacheLoadAndStore("selectProcessInstanceIdsByProcessDefinitionId", processDefinitionId);
     }
 
     @Override
@@ -232,9 +232,9 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
         // False -> executions should not be cached if using executionTreeFetching
         boolean useCache = !performanceSettings.isEnableEagerExecutionTreeFetching();
         if (useCache) {
-            return getDbSqlSession().selectList("selectExecutionsByQueryCriteria", executionQuery);
+            return getDbSqlSession().selectList("selectExecutionsByQueryCriteria", executionQuery, getManagedEntityClass());
         } else {
-            return getDbSqlSession().selectListNoCacheCheck("selectExecutionsByQueryCriteria", executionQuery);
+            return getDbSqlSession().selectListNoCacheLoadAndStore("selectExecutionsByQueryCriteria", executionQuery);
         }
     }
 
@@ -249,9 +249,9 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
         // False -> executions should not be cached if using executionTreeFetching
         boolean useCache = !performanceSettings.isEnableEagerExecutionTreeFetching();
         if (useCache) {
-            return getDbSqlSession().selectList("selectProcessInstanceByQueryCriteria", executionQuery);
+            return getDbSqlSession().selectList("selectProcessInstanceByQueryCriteria", executionQuery, getManagedEntityClass());
         } else {
-            return getDbSqlSession().selectListNoCacheCheck("selectProcessInstanceByQueryCriteria", executionQuery);
+            return getDbSqlSession().selectListNoCacheLoadAndStore("selectProcessInstanceByQueryCriteria", executionQuery, getManagedEntityClass());
         }
     }
 
@@ -272,7 +272,8 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
         }
         executionQuery.setFirstResult(0);
 
-        List<ProcessInstance> instanceList = getDbSqlSession().selectListWithRawParameterNoCacheCheck("selectProcessInstanceWithVariablesByQueryCriteria", executionQuery);
+        List<ProcessInstance> instanceList = getDbSqlSession().selectListWithRawParameterNoCacheLoadAndStore(
+                        "selectProcessInstanceWithVariablesByQueryCriteria", executionQuery, getManagedEntityClass());
 
         if (instanceList != null && !instanceList.isEmpty()) {
             if (firstResult > 0) {
@@ -316,11 +317,12 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
     }
 
     @Override
-    public void updateProcessInstanceLockTime(String processInstanceId, Date lockDate, Date expirationTime) {
+    public void updateProcessInstanceLockTime(String processInstanceId, Date lockDate, String lockOwner, Date expirationTime) {
         HashMap<String, Object> params = new HashMap<>();
         params.put("id", processInstanceId);
         params.put("lockTime", lockDate);
         params.put("expirationTime", expirationTime);
+        params.put("lockOwner", lockOwner);
 
         int result = getDbSqlSession().update("updateProcessInstanceLockTime", params);
         if (result == 0) {
@@ -339,5 +341,12 @@ public class MybatisExecutionDataManager extends AbstractProcessDataManager<Exec
         params.put("id", processInstanceId);
         getDbSqlSession().update("clearProcessInstanceLockTime", params);
     }
-    
+
+    @Override
+    public void clearAllProcessInstanceLockTimes(String lockOwner) {
+        HashMap<String, Object> params = new HashMap<>();
+        params.put("lockOwner", lockOwner);
+        getDbSqlSession().update("clearAllProcessInstanceLockTimes", params);
+    }
+
 }

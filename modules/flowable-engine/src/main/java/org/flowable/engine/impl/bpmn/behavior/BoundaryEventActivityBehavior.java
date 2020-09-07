@@ -47,7 +47,6 @@ public class BoundaryEventActivityBehavior extends FlowNodeActivityBehavior {
 
     @Override
     public void trigger(DelegateExecution execution, String triggerName, Object triggerData) {
-
         ExecutionEntity executionEntity = (ExecutionEntity) execution;
 
         CommandContext commandContext = Context.getCommandContext();
@@ -60,7 +59,6 @@ public class BoundaryEventActivityBehavior extends FlowNodeActivityBehavior {
     }
 
     protected void executeInterruptingBehavior(ExecutionEntity executionEntity, CommandContext commandContext) {
-
         // The destroy scope operation will look for the parent execution and
         // destroy the whole scope, and leave the boundary event using this parent execution.
         //
@@ -101,7 +99,6 @@ public class BoundaryEventActivityBehavior extends FlowNodeActivityBehavior {
     }
 
     protected void executeNonInterruptingBehavior(ExecutionEntity executionEntity, CommandContext commandContext) {
-
         // Non-interrupting: the current execution is given the first parent
         // scope (which isn't its direct parent)
         //
@@ -134,12 +131,14 @@ public class BoundaryEventActivityBehavior extends FlowNodeActivityBehavior {
         ExecutionEntity nonInterruptingExecution = executionEntityManager.createChildExecution(scopeExecution);
         nonInterruptingExecution.setActive(false);
         nonInterruptingExecution.setCurrentFlowElement(executionEntity.getCurrentFlowElement());
+        
+        // create new start activity instance for the non interrupting boundary event
+        CommandContextUtil.getActivityInstanceEntityManager(commandContext).recordActivityStart(executionEntity);
 
         CommandContextUtil.getAgenda(commandContext).planTakeOutgoingSequenceFlowsOperation(nonInterruptingExecution, true);
     }
 
     protected void deleteChildExecutions(ExecutionEntity parentExecution, ExecutionEntity outgoingExecutionEntity, CommandContext commandContext) {
-
         ExecutionEntityManager executionEntityManager = CommandContextUtil.getExecutionEntityManager(commandContext);
         String deleteReason = DeleteReason.BOUNDARY_EVENT_INTERRUPTING + " (" + outgoingExecutionEntity.getCurrentActivityId() + ")";
         executionEntityManager.deleteChildExecutions(parentExecution, Collections.singletonList(outgoingExecutionEntity.getId()), null,

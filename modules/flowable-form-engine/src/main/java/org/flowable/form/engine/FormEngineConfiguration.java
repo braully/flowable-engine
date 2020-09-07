@@ -27,6 +27,7 @@ import org.flowable.common.engine.impl.interceptor.CommandInterceptor;
 import org.flowable.common.engine.impl.interceptor.EngineConfigurationConstants;
 import org.flowable.common.engine.impl.persistence.deploy.DefaultDeploymentCache;
 import org.flowable.common.engine.impl.persistence.deploy.DeploymentCache;
+import org.flowable.common.engine.impl.persistence.entity.TableDataManager;
 import org.flowable.editor.form.converter.FormJsonConverter;
 import org.flowable.form.api.FormEngineConfigurationApi;
 import org.flowable.form.api.FormManagementService;
@@ -57,8 +58,6 @@ import org.flowable.form.engine.impl.persistence.entity.FormInstanceEntityManage
 import org.flowable.form.engine.impl.persistence.entity.FormInstanceEntityManagerImpl;
 import org.flowable.form.engine.impl.persistence.entity.FormResourceEntityManager;
 import org.flowable.form.engine.impl.persistence.entity.FormResourceEntityManagerImpl;
-import org.flowable.form.engine.impl.persistence.entity.TableDataManager;
-import org.flowable.form.engine.impl.persistence.entity.TableDataManagerImpl;
 import org.flowable.form.engine.impl.persistence.entity.data.FormDefinitionDataManager;
 import org.flowable.form.engine.impl.persistence.entity.data.FormDeploymentDataManager;
 import org.flowable.form.engine.impl.persistence.entity.data.FormInstanceDataManager;
@@ -67,8 +66,6 @@ import org.flowable.form.engine.impl.persistence.entity.data.impl.MybatisFormDef
 import org.flowable.form.engine.impl.persistence.entity.data.impl.MybatisFormDeploymentDataManager;
 import org.flowable.form.engine.impl.persistence.entity.data.impl.MybatisFormInstanceDataManager;
 import org.flowable.form.engine.impl.persistence.entity.data.impl.MybatisFormResourceDataManager;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import liquibase.Liquibase;
 import liquibase.database.Database;
@@ -102,13 +99,10 @@ public class FormEngineConfiguration extends AbstractEngineConfiguration
     protected FormDefinitionEntityManager formDefinitionEntityManager;
     protected FormResourceEntityManager resourceEntityManager;
     protected FormInstanceEntityManager formInstanceEntityManager;
-    protected TableDataManager tableDataManager;
 
     protected ExpressionManager expressionManager;
 
     protected FormJsonConverter formJsonConverter = new FormJsonConverter();
-
-    protected ObjectMapper objectMapper = new ObjectMapper();
 
     // DEPLOYERS
     // ////////////////////////////////////////////////////////////////
@@ -218,7 +212,9 @@ public class FormEngineConfiguration extends AbstractEngineConfiguration
     // Data managers
     ///////////////////////////////////////////////////////////
 
+    @Override
     public void initDataManagers() {
+        super.initDataManagers();
         if (deploymentDataManager == null) {
             deploymentDataManager = new MybatisFormDeploymentDataManager(this);
         }
@@ -233,7 +229,9 @@ public class FormEngineConfiguration extends AbstractEngineConfiguration
         }
     }
 
+    @Override
     public void initEntityManagers() {
+        super.initEntityManagers();
         if (deploymentEntityManager == null) {
             deploymentEntityManager = new FormDeploymentEntityManagerImpl(this, deploymentDataManager);
         }
@@ -246,15 +244,13 @@ public class FormEngineConfiguration extends AbstractEngineConfiguration
         if (formInstanceEntityManager == null) {
             formInstanceEntityManager = new FormInstanceEntityManagerImpl(this, formInstanceDataManager);
         }
-        if (tableDataManager == null) {
-            tableDataManager = new TableDataManagerImpl(this);
-        }
     }
 
     // data model ///////////////////////////////////////////////////////////////
 
     @Override
     public void initSchemaManager() {
+        super.initSchemaManager();
         if (this.schemaManager == null) {
             this.schemaManager = new FormDbSchemaManager();
         }
@@ -582,10 +578,6 @@ public class FormEngineConfiguration extends AbstractEngineConfiguration
         return this;
     }
 
-    public TableDataManager getTableDataManager() {
-        return tableDataManager;
-    }
-
     public FormEngineConfiguration setTableDataManager(TableDataManager tableDataManager) {
         this.tableDataManager = tableDataManager;
         return this;
@@ -608,15 +600,6 @@ public class FormEngineConfiguration extends AbstractEngineConfiguration
 
     public FormEngineConfiguration setFormJsonConverter(FormJsonConverter formJsonConverter) {
         this.formJsonConverter = formJsonConverter;
-        return this;
-    }
-
-    public ObjectMapper getObjectMapper() {
-        return objectMapper;
-    }
-
-    public FormEngineConfiguration setObjectMapper(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
         return this;
     }
 }

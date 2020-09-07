@@ -39,10 +39,11 @@ public class StartProcessInstanceAsyncCmd extends StartProcessInstanceCmd {
     @Override
     public ProcessInstance execute(CommandContext commandContext) {
         ProcessEngineConfigurationImpl processEngineConfiguration = CommandContextUtil.getProcessEngineConfiguration(commandContext);
-        ProcessDefinition processDefinition = getProcessDefinition(processEngineConfiguration);
+        ProcessDefinition processDefinition = getProcessDefinition(processEngineConfiguration, commandContext);
         processInstanceHelper = CommandContextUtil.getProcessEngineConfiguration(commandContext).getProcessInstanceHelper();
         ExecutionEntity processInstance = (ExecutionEntity) processInstanceHelper.createProcessInstance(processDefinition, businessKey, processInstanceName,
-            overrideDefinitionTenantId, predefinedProcessInstanceId, variables, transientVariables, callbackId, callbackType, false);
+            overrideDefinitionTenantId, predefinedProcessInstanceId, variables, transientVariables,
+            callbackId, callbackType, referenceId, referenceType, stageInstanceId, false);
         ExecutionEntity execution = processInstance.getExecutions().get(0);
         Process process = ProcessDefinitionUtil.getProcess(processInstance.getProcessDefinitionId());
 
@@ -53,18 +54,20 @@ public class StartProcessInstanceAsyncCmd extends StartProcessInstanceCmd {
             eventDispatcher.dispatchEvent(FlowableEventBuilder.createProcessStartedEvent(execution, variables, false));
         }
 
-        executeAsynchronous(execution);
+        executeAsynchronous(execution, process);
 
         return processInstance;
     }
 
-    protected void executeAsynchronous(ExecutionEntity execution) {
+    protected void executeAsynchronous(ExecutionEntity execution, Process process) {
         JobService jobService = CommandContextUtil.getJobService();
 
         JobEntity job = jobService.createJob();
         job.setExecutionId(execution.getId());
         job.setProcessInstanceId(execution.getProcessInstanceId());
         job.setProcessDefinitionId(execution.getProcessDefinitionId());
+        job.setElementId(process.getId());
+        job.setElementName(process.getName());
         job.setJobHandlerType(AsyncContinuationJobHandler.TYPE);
 
         // Inherit tenant id (if applicable)

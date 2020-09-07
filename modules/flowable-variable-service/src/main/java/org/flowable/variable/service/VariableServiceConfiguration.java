@@ -19,15 +19,11 @@ import org.flowable.variable.service.impl.HistoricVariableServiceImpl;
 import org.flowable.variable.service.impl.VariableServiceImpl;
 import org.flowable.variable.service.impl.persistence.entity.HistoricVariableInstanceEntityManager;
 import org.flowable.variable.service.impl.persistence.entity.HistoricVariableInstanceEntityManagerImpl;
-import org.flowable.variable.service.impl.persistence.entity.VariableByteArrayEntityManager;
-import org.flowable.variable.service.impl.persistence.entity.VariableByteArrayEntityManagerImpl;
 import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntityManager;
 import org.flowable.variable.service.impl.persistence.entity.VariableInstanceEntityManagerImpl;
 import org.flowable.variable.service.impl.persistence.entity.data.HistoricVariableInstanceDataManager;
-import org.flowable.variable.service.impl.persistence.entity.data.VariableByteArrayDataManager;
 import org.flowable.variable.service.impl.persistence.entity.data.VariableInstanceDataManager;
 import org.flowable.variable.service.impl.persistence.entity.data.impl.MybatisHistoricVariableInstanceDataManager;
-import org.flowable.variable.service.impl.persistence.entity.data.impl.MybatisVariableByteArrayDataManager;
 import org.flowable.variable.service.impl.persistence.entity.data.impl.MybatisVariableInstanceDataManager;
 
 /**
@@ -47,13 +43,11 @@ public class VariableServiceConfiguration extends AbstractServiceConfiguration {
     // DATA MANAGERS ///////////////////////////////////////////////////
 
     protected VariableInstanceDataManager variableInstanceDataManager;
-    protected VariableByteArrayDataManager byteArrayDataManager;
     protected HistoricVariableInstanceDataManager historicVariableInstanceDataManager;
 
     // ENTITY MANAGERS /////////////////////////////////////////////////
     
     protected VariableInstanceEntityManager variableInstanceEntityManager;
-    protected VariableByteArrayEntityManager byteArrayEntityManager;
     protected HistoricVariableInstanceEntityManager historicVariableInstanceEntityManager;
     
     protected VariableTypes variableTypes;
@@ -61,6 +55,8 @@ public class VariableServiceConfiguration extends AbstractServiceConfiguration {
     protected InternalHistoryVariableManager internalHistoryVariableManager;
     
     protected int maxLengthString;
+    
+    protected boolean loggingSessionEnabled;
     
     /**
      * This flag determines whether variables of the type 'serializable' will be tracked. This means that, when true, in a JavaDelegate you can write
@@ -92,9 +88,6 @@ public class VariableServiceConfiguration extends AbstractServiceConfiguration {
         if (variableInstanceDataManager == null) {
             variableInstanceDataManager = new MybatisVariableInstanceDataManager();
         }
-        if (byteArrayDataManager == null) {
-            byteArrayDataManager = new MybatisVariableByteArrayDataManager();
-        }
         if (historicVariableInstanceDataManager == null) {
             historicVariableInstanceDataManager = new MybatisHistoricVariableInstanceDataManager();
         }
@@ -103,9 +96,6 @@ public class VariableServiceConfiguration extends AbstractServiceConfiguration {
     public void initEntityManagers() {
         if (variableInstanceEntityManager == null) {
             variableInstanceEntityManager = new VariableInstanceEntityManagerImpl(this, variableInstanceDataManager);
-        }
-        if (byteArrayEntityManager == null) {
-            byteArrayEntityManager = new VariableByteArrayEntityManagerImpl(this, byteArrayDataManager);
         }
         if (historicVariableInstanceEntityManager == null) {
             historicVariableInstanceEntityManager = new HistoricVariableInstanceEntityManagerImpl(this, historicVariableInstanceDataManager);
@@ -146,15 +136,6 @@ public class VariableServiceConfiguration extends AbstractServiceConfiguration {
         return this;
     }
     
-    public VariableByteArrayDataManager getByteArrayDataManager() {
-        return byteArrayDataManager;
-    }
-
-    public VariableServiceConfiguration setByteArrayDataManager(VariableByteArrayDataManager byteArrayDataManager) {
-        this.byteArrayDataManager = byteArrayDataManager;
-        return this;
-    }
-    
     public HistoricVariableInstanceDataManager getHistoricVariableInstanceDataManager() {
         return historicVariableInstanceDataManager;
     }
@@ -170,15 +151,6 @@ public class VariableServiceConfiguration extends AbstractServiceConfiguration {
 
     public VariableServiceConfiguration setVariableInstanceEntityManager(VariableInstanceEntityManager variableInstanceEntityManager) {
         this.variableInstanceEntityManager = variableInstanceEntityManager;
-        return this;
-    }
-    
-    public VariableByteArrayEntityManager getByteArrayEntityManager() {
-        return byteArrayEntityManager;
-    }
-
-    public VariableServiceConfiguration setByteArrayEntityManager(VariableByteArrayEntityManager byteArrayEntityManager) {
-        this.byteArrayEntityManager = byteArrayEntityManager;
         return this;
     }
     
@@ -217,7 +189,16 @@ public class VariableServiceConfiguration extends AbstractServiceConfiguration {
         this.maxLengthString = maxLengthString;
         return this;
     }
-    
+
+    public boolean isLoggingSessionEnabled() {
+        return loggingSessionEnabled;
+    }
+
+    public VariableServiceConfiguration setLoggingSessionEnabled(boolean loggingSessionEnabled) {
+        this.loggingSessionEnabled = loggingSessionEnabled;
+        return this;
+    }
+
     public boolean isSerializableVariableTypeTrackDeserializedObjects() {
         return serializableVariableTypeTrackDeserializedObjects;
     }

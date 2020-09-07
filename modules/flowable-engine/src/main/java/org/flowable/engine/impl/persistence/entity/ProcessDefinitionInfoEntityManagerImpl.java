@@ -13,28 +13,21 @@
 
 package org.flowable.engine.impl.persistence.entity;
 
-import org.flowable.common.engine.impl.persistence.entity.data.DataManager;
+import org.flowable.common.engine.impl.persistence.entity.ByteArrayRef;
 import org.flowable.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.flowable.engine.impl.persistence.entity.data.ProcessDefinitionInfoDataManager;
 
 /**
  * @author Tijs Rademakers
  */
-public class ProcessDefinitionInfoEntityManagerImpl extends
-        AbstractEntityManager<ProcessDefinitionInfoEntity> implements ProcessDefinitionInfoEntityManager {
-
-    protected ProcessDefinitionInfoDataManager processDefinitionInfoDataManager;
+public class ProcessDefinitionInfoEntityManagerImpl
+    extends AbstractProcessEngineEntityManager<ProcessDefinitionInfoEntity, ProcessDefinitionInfoDataManager>
+    implements ProcessDefinitionInfoEntityManager {
 
     public ProcessDefinitionInfoEntityManagerImpl(ProcessEngineConfigurationImpl processEngineConfiguration,
             ProcessDefinitionInfoDataManager processDefinitionInfoDataManager) {
 
-        super(processEngineConfiguration);
-        this.processDefinitionInfoDataManager = processDefinitionInfoDataManager;
-    }
-
-    @Override
-    protected DataManager<ProcessDefinitionInfoEntity> getDataManager() {
-        return processDefinitionInfoDataManager;
+        super(processEngineConfiguration, processDefinitionInfoDataManager);
     }
 
     @Override
@@ -60,7 +53,7 @@ public class ProcessDefinitionInfoEntityManagerImpl extends
     public void updateInfoJson(String id, byte[] json) {
         ProcessDefinitionInfoEntity processDefinitionInfo = findById(id);
         if (processDefinitionInfo != null) {
-            ByteArrayRef ref = new ByteArrayRef(processDefinitionInfo.getInfoJsonId());
+            ByteArrayRef ref = new ByteArrayRef(processDefinitionInfo.getInfoJsonId(), null);
             ref.setValue("json", json);
 
             if (processDefinitionInfo.getInfoJsonId() == null) {
@@ -74,19 +67,19 @@ public class ProcessDefinitionInfoEntityManagerImpl extends
     @Override
     public void deleteInfoJson(ProcessDefinitionInfoEntity processDefinitionInfo) {
         if (processDefinitionInfo.getInfoJsonId() != null) {
-            ByteArrayRef ref = new ByteArrayRef(processDefinitionInfo.getInfoJsonId());
+            ByteArrayRef ref = new ByteArrayRef(processDefinitionInfo.getInfoJsonId(), null);
             ref.delete();
         }
     }
 
     @Override
     public ProcessDefinitionInfoEntity findProcessDefinitionInfoByProcessDefinitionId(String processDefinitionId) {
-        return processDefinitionInfoDataManager.findProcessDefinitionInfoByProcessDefinitionId(processDefinitionId);
+        return dataManager.findProcessDefinitionInfoByProcessDefinitionId(processDefinitionId);
     }
 
     @Override
     public byte[] findInfoJsonById(String infoJsonId) {
-        ByteArrayRef ref = new ByteArrayRef(infoJsonId);
+        ByteArrayRef ref = new ByteArrayRef(infoJsonId, null);
         return ref.getBytes();
     }
 }

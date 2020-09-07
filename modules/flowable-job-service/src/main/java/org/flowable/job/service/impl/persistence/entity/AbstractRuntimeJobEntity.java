@@ -27,6 +27,14 @@ public interface AbstractRuntimeJobEntity extends Job, AbstractJobEntity {
     void setProcessInstanceId(String processInstanceId);
 
     void setProcessDefinitionId(String processDefinitionId);
+    
+    void setCategory(String category);
+    
+    void setJobType(String jobType);
+    
+    void setElementId(String elementId);
+    
+    void setElementName(String elementName);
 
     void setScopeId(String scopeId);
 
@@ -45,6 +53,8 @@ public interface AbstractRuntimeJobEntity extends Job, AbstractJobEntity {
 
     void setScopeDefinitionId(String scopeDefinitionId);
 
+    void setCorrelationId(String correlationId);
+
     void setDuedate(Date duedate);
 
     void setExclusive(boolean isExclusive);
@@ -60,8 +70,6 @@ public interface AbstractRuntimeJobEntity extends Job, AbstractJobEntity {
     int getMaxIterations();
 
     void setMaxIterations(int maxIterations);
-    
-    void setJobType(String jobType);
     
     void setCreateTime(Date createTime);
 

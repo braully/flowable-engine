@@ -20,6 +20,8 @@ import org.flowable.common.engine.impl.callback.RuntimeInstanceStateChangeCallba
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 
 /**
+ * Callback implementation for a child case instance returning it's state change to its parent.
+ *
  * @author Joram Barrez
  */
 public class ChildCaseInstanceStateChangeCallback implements RuntimeInstanceStateChangeCallback {
@@ -33,8 +35,7 @@ public class ChildCaseInstanceStateChangeCallback implements RuntimeInstanceStat
          * needs to be triggered.
          */
         
-        if (CaseInstanceState.TERMINATED.equals(callbackData.getNewState())
-                || CaseInstanceState.COMPLETED.equals(callbackData.getNewState())) {
+        if (CaseInstanceState.COMPLETED.equals(callbackData.getNewState())) {
             
             CommandContext commandContext = CommandContextUtil.getCommandContext();
             PlanItemInstanceEntity planItemInstanceEntity = CommandContextUtil.getPlanItemInstanceEntityManager(commandContext)
@@ -43,6 +44,7 @@ public class ChildCaseInstanceStateChangeCallback implements RuntimeInstanceStat
             if (planItemInstanceEntity != null) {
                 CommandContextUtil.getAgenda(commandContext).planTriggerPlanItemInstanceOperation(planItemInstanceEntity);
             }
+
         }
     }
 

@@ -31,11 +31,14 @@ import org.flowable.bpmn.converter.child.BaseChildElementParser;
 import org.flowable.bpmn.converter.child.CancelEventDefinitionParser;
 import org.flowable.bpmn.converter.child.CompensateEventDefinitionParser;
 import org.flowable.bpmn.converter.child.ConditionExpressionParser;
+import org.flowable.bpmn.converter.child.ConditionParser;
+import org.flowable.bpmn.converter.child.ConditionalEventDefinitionParser;
 import org.flowable.bpmn.converter.child.DataInputAssociationParser;
 import org.flowable.bpmn.converter.child.DataOutputAssociationParser;
 import org.flowable.bpmn.converter.child.DataStateParser;
 import org.flowable.bpmn.converter.child.DocumentationParser;
 import org.flowable.bpmn.converter.child.ErrorEventDefinitionParser;
+import org.flowable.bpmn.converter.child.EscalationEventDefinitionParser;
 import org.flowable.bpmn.converter.child.ExecutionListenerParser;
 import org.flowable.bpmn.converter.child.FieldExtensionParser;
 import org.flowable.bpmn.converter.child.FlowNodeRefParser;
@@ -69,12 +72,15 @@ public class BpmnXMLUtil implements BpmnXMLConstants {
     static {
         addGenericParser(new CancelEventDefinitionParser());
         addGenericParser(new CompensateEventDefinitionParser());
+        addGenericParser(new ConditionalEventDefinitionParser());
+        addGenericParser(new ConditionParser());
         addGenericParser(new ConditionExpressionParser());
         addGenericParser(new DataInputAssociationParser());
         addGenericParser(new DataOutputAssociationParser());
         addGenericParser(new DataStateParser());
         addGenericParser(new DocumentationParser());
         addGenericParser(new ErrorEventDefinitionParser());
+        addGenericParser(new EscalationEventDefinitionParser());
         addGenericParser(new ExecutionListenerParser());
         addGenericParser(new FieldExtensionParser());
         addGenericParser(new FlowableEventListenerParser());
@@ -317,14 +323,30 @@ public class BpmnXMLUtil implements BpmnXMLConstants {
             }
 
             xtw.writeStartElement(FLOWABLE_EXTENSIONS_PREFIX, elementName, FLOWABLE_EXTENSIONS_NAMESPACE);
-            if (StringUtils.isNotEmpty(ioParameter.getSource())) {
-                writeDefaultAttribute(ATTRIBUTE_IOPARAMETER_SOURCE, ioParameter.getSource(), xtw);
-            }
             if (StringUtils.isNotEmpty(ioParameter.getSourceExpression())) {
                 writeDefaultAttribute(ATTRIBUTE_IOPARAMETER_SOURCE_EXPRESSION, ioParameter.getSourceExpression(), xtw);
+                
+            } else if (StringUtils.isNotEmpty(ioParameter.getSource())) {
+                writeDefaultAttribute(ATTRIBUTE_IOPARAMETER_SOURCE, ioParameter.getSource(), xtw);
             }
-            if (StringUtils.isNotEmpty(ioParameter.getTarget())) {
+            
+            if (StringUtils.isNotEmpty(ioParameter.getAttributeValue(null, "sourceType"))) {
+                writeDefaultAttribute("sourceType", ioParameter.getAttributeValue(null, "sourceType"), xtw);
+            }
+            
+            if (StringUtils.isNotEmpty(ioParameter.getTargetExpression())) {
+                writeDefaultAttribute(ATTRIBUTE_IOPARAMETER_TARGET_EXPRESSION, ioParameter.getTargetExpression(), xtw);
+                
+            } else if (StringUtils.isNotEmpty(ioParameter.getTarget())) {
                 writeDefaultAttribute(ATTRIBUTE_IOPARAMETER_TARGET, ioParameter.getTarget(), xtw);
+            }
+            
+            if (StringUtils.isNotEmpty(ioParameter.getAttributeValue(null, "targetType"))) {
+                writeDefaultAttribute("targetType", ioParameter.getAttributeValue(null, "targetType"), xtw);
+            }
+            
+            if (ioParameter.isTransient()) {
+                writeDefaultAttribute(ATTRIBUTE_IOPARAMETER_TRANSIENT, "true", xtw);
             }
 
             xtw.writeEndElement();

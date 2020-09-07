@@ -14,12 +14,16 @@ package org.flowable.cmmn.engine.impl;
 
 import org.flowable.cmmn.api.CmmnHistoryService;
 import org.flowable.cmmn.api.CmmnManagementService;
+import org.flowable.cmmn.api.CmmnMigrationService;
 import org.flowable.cmmn.api.CmmnRepositoryService;
 import org.flowable.cmmn.api.CmmnRuntimeService;
 import org.flowable.cmmn.api.CmmnTaskService;
+import org.flowable.cmmn.api.DynamicCmmnService;
 import org.flowable.cmmn.engine.CmmnEngine;
 import org.flowable.cmmn.engine.CmmnEngineConfiguration;
 import org.flowable.cmmn.engine.CmmnEngines;
+import org.flowable.cmmn.engine.impl.cmd.ClearCaseInstanceLockTimesCmd;
+import org.flowable.common.engine.api.engine.EngineLifecycleListener;
 import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
 import org.slf4j.Logger;
@@ -35,10 +39,12 @@ public class CmmnEngineImpl implements CmmnEngine {
     protected String name;
     protected CmmnEngineConfiguration cmmnEngineConfiguration;
     protected CmmnRuntimeService cmmnRuntimeService;
+    protected DynamicCmmnService dynamicCmmnService;
     protected CmmnTaskService cmmnTaskService;
     protected CmmnManagementService cmmnManagementService;
     protected CmmnRepositoryService cmmnRepositoryService;
     protected CmmnHistoryService cmmnHistoryService;
+    protected CmmnMigrationService cmmnMigrationService;
     
     protected AsyncExecutor asyncExecutor;
     protected AsyncExecutor asyncHistoryExecutor;
@@ -47,10 +53,12 @@ public class CmmnEngineImpl implements CmmnEngine {
         this.cmmnEngineConfiguration = cmmnEngineConfiguration;
         this.name = cmmnEngineConfiguration.getEngineName();
         this.cmmnRuntimeService = cmmnEngineConfiguration.getCmmnRuntimeService();
+        this.dynamicCmmnService = cmmnEngineConfiguration.getDynamicCmmnService();
         this.cmmnTaskService = cmmnEngineConfiguration.getCmmnTaskService();
         this.cmmnManagementService = cmmnEngineConfiguration.getCmmnManagementService();
         this.cmmnRepositoryService = cmmnEngineConfiguration.getCmmnRepositoryService();
         this.cmmnHistoryService = cmmnEngineConfiguration.getCmmnHistoryService();
+        this.cmmnMigrationService = cmmnEngineConfiguration.getCmmnMigrationService();
         
         this.asyncExecutor = cmmnEngineConfiguration.getAsyncExecutor();
         this.asyncHistoryExecutor = cmmnEngineConfiguration.getAsyncHistoryExecutor();
@@ -60,6 +68,19 @@ public class CmmnEngineImpl implements CmmnEngine {
             commandExecutor.execute(cmmnEngineConfiguration.getSchemaCommandConfig(), cmmnEngineConfiguration.getSchemaManagementCmd());
         }
 
+        LOGGER.info("CmmnEngine {} created", name);
+        
+        CmmnEngines.registerCmmnEngine(this);
+
+        if (cmmnEngineConfiguration.getEngineLifecycleListeners() != null) {
+            for (EngineLifecycleListener engineLifecycleListener : cmmnEngineConfiguration.getEngineLifecycleListeners()) {
+                engineLifecycleListener.onEngineBuilt(this);
+            }
+        }
+    }
+    
+    @Override
+    public void startExecutors() {
         if (asyncExecutor != null && asyncExecutor.isAutoActivate()) {
             asyncExecutor.start();
         }
@@ -70,10 +91,10 @@ public class CmmnEngineImpl implements CmmnEngine {
         if (asyncHistoryExecutor != null && asyncHistoryExecutor.isAutoActivate()) {
             asyncHistoryExecutor.start();
         }
-
-        LOGGER.info("CmmnEngine {} created", name);
         
-        CmmnEngines.registerCmmnEngine(this);
+        if (cmmnEngineConfiguration.isEnableHistoryCleaning()) {
+            cmmnManagementService.handleHistoryCleanupTimerJob();
+        }
     }
     
     @Override
@@ -91,12 +112,21 @@ public class CmmnEngineImpl implements CmmnEngine {
         
         if (asyncExecutor != null && asyncExecutor.isActive()) {
             asyncExecutor.shutdown();
+
+            // Async executor will have cleared the jobs lock owner/times, but not yet the case instance lock time/owner
+            cmmnEngineConfiguration.getCommandExecutor().execute(new ClearCaseInstanceLockTimesCmd(asyncExecutor.getLockOwner()));
         }
         if (asyncHistoryExecutor != null && asyncHistoryExecutor.isActive()) {
             asyncHistoryExecutor.shutdown();
         }
+
         cmmnEngineConfiguration.close();
 
+        if (cmmnEngineConfiguration.getEngineLifecycleListeners() != null) {
+            for (EngineLifecycleListener engineLifecycleListener : cmmnEngineConfiguration.getEngineLifecycleListeners()) {
+                engineLifecycleListener.onEngineClosed(this);
+            }
+        }
     }
     
     @Override
@@ -116,7 +146,16 @@ public class CmmnEngineImpl implements CmmnEngine {
     public void setCmmnRuntimeService(CmmnRuntimeService cmmnRuntimeService) {
         this.cmmnRuntimeService = cmmnRuntimeService;
     }
-    
+
+    @Override
+    public DynamicCmmnService getDynamicCmmnService() {
+        return dynamicCmmnService;
+    }
+
+    public void setDynamicCmmnService(DynamicCmmnService dynamicCmmnService) {
+        this.dynamicCmmnService = dynamicCmmnService;
+    }
+
     @Override
     public CmmnTaskService getCmmnTaskService() {
         return cmmnTaskService;
@@ -152,5 +191,13 @@ public class CmmnEngineImpl implements CmmnEngine {
     public void setCmmnHistoryService(CmmnHistoryService cmmnHistoryService) {
         this.cmmnHistoryService = cmmnHistoryService;
     }
-    
+
+    @Override
+    public CmmnMigrationService getCmmnMigrationService() {
+        return cmmnMigrationService;
+    }
+
+    public void setCmmnMigrationService(CmmnMigrationService cmmnMigrationService) {
+        this.cmmnMigrationService = cmmnMigrationService;
+    }
 }

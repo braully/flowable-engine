@@ -15,11 +15,8 @@ package org.flowable.engine.migration;
 
 import java.util.Map;
 
-import org.flowable.engine.impl.migration.ProcessInstanceMigrationValidationResult;
+import org.flowable.batch.api.Batch;
 
-/**
- * @author Dennis Federico
- */
 public interface ProcessInstanceMigrationBuilder {
 
     /**
@@ -70,6 +67,54 @@ public interface ProcessInstanceMigrationBuilder {
     ProcessInstanceMigrationBuilder withMigrateToProcessDefinitionTenantId(String processDefinitionTenantId);
 
     /**
+     * The script executed before process instance migration
+     *
+     * @param script the script to execute
+     * @return process instance migration builder
+     */
+    ProcessInstanceMigrationBuilder preUpgradeScript(Script script);
+
+    /**
+     * The java delegate class name executed before process instance migration
+     *
+     * @param javaDelegateClassName the java delegate to execute
+     * @return process instance migration builder
+     */
+    ProcessInstanceMigrationBuilder preUpgradeJavaDelegate(String javaDelegateClassName);
+
+    /**
+     * The java delegate expression executed before process instance migration
+     *
+     * @param expressionString string which resolves into java delagate instance
+     * @return process instance migration builder
+     */
+    ProcessInstanceMigrationBuilder preUpgradeJavaDelegateExpression(String expressionString);
+
+    /**
+     * The script executed after process instance migration
+     *
+     * @param script the script to execute
+     * @return process instance migration builder
+     */
+    ProcessInstanceMigrationBuilder postUpgradeScript(Script script);
+
+    /**
+     * The java delegate class name executed after process instance migration
+     *
+     * @param javaDelegateClassName the java delegate to execute
+     * @return process instance migration builder
+     */
+    ProcessInstanceMigrationBuilder postUpgradeJavaDelegate(String javaDelegateClassName);
+
+    /**
+     * The java delegate expression executed after process instance migration
+     *
+     * @param expressionString string which resolves into java delagate instance
+     * @return process instance migration builder
+     */
+    ProcessInstanceMigrationBuilder postUpgradeJavaDelegateExpression(String expressionString);
+
+    /**
      * Adds an activity mapping to the process instance migration plan. Addition order is relevant and "auto-mapping" has priority. There can only be one mapping for a given "from" activity.
      *
      * @param mapping
@@ -115,23 +160,29 @@ public interface ProcessInstanceMigrationBuilder {
      *
      * @param processInstanceId
      * @return a ProcessInstanceMigrationValidationResult that contains validation error messages - if any
-     * @see ProcessInstanceMigrationValidationResult
      */
     ProcessInstanceMigrationValidationResult validateMigration(String processInstanceId);
 
     /**
-     * Starts the process instance migration for all process instances of a given process definition identified by the process definition id.
+     * Asynchronously starts the process instance migration for each process instances of a given process definition identified by the process definition id.
      *
      * @param processDefinitionId
      */
     void migrateProcessInstances(String processDefinitionId);
 
     /**
+     * Starts the process instance migration for all process instances of a given process definition identified by the process definition id.
+     *
+     * @param processDefinitionId
+     */
+    Batch batchMigrateProcessInstances(String processDefinitionId);
+
+    /**
      * Validates this process instance migration instruction for each process instance of a given process definition identified by the process definition id.
      *
      * @param processDefinitionId
      * @return a ProcessInstanceMigrationValidationResult that contains validation error messages - if any
-     * @see ProcessInstanceMigrationValidationResult
+     * @see ProcessInstanceBatchMigrationResult
      */
     ProcessInstanceMigrationValidationResult validateMigrationOfProcessInstances(String processDefinitionId);
 
@@ -145,13 +196,23 @@ public interface ProcessInstanceMigrationBuilder {
     void migrateProcessInstances(String processDefinitionKey, int processDefinitionVersion, String processDefinitionTenantId);
 
     /**
+     * Asynchronously starts the process instance migration for each process instances of a given process definition identified by the process definition key and version (optional tenantId).
+     *
+     * @param processDefinitionKey
+     * @param processDefinitionVersion
+     * @param processDefinitionTenantId
+     * @return an id of the created batch entity
+     */
+    Batch batchMigrateProcessInstances(String processDefinitionKey, int processDefinitionVersion, String processDefinitionTenantId);
+
+    /**
      * Validates this process instance migration instruction for each process instance of a given process definition identified by the process definition key and version (optional tenantId).
      *
      * @param processDefinitionKey
      * @param processDefinitionVersion
      * @param processDefinitionTenantId
      * @return a ProcessInstanceMigrationValidationResult that contains validation error messages - if any
-     * @see ProcessInstanceMigrationValidationResult
+     * @see ProcessInstanceBatchMigrationResult
      */
     ProcessInstanceMigrationValidationResult validateMigrationOfProcessInstances(String processDefinitionKey, int processDefinitionVersion, String processDefinitionTenantId);
 

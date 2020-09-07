@@ -12,6 +12,9 @@
  */
 package org.flowable.rest.service.api;
 
+import org.flowable.batch.api.Batch;
+import org.flowable.batch.api.BatchPart;
+import org.flowable.batch.api.BatchQuery;
 import org.flowable.engine.form.FormData;
 import org.flowable.engine.history.HistoricActivityInstanceQuery;
 import org.flowable.engine.history.HistoricDetail;
@@ -57,6 +60,7 @@ import org.flowable.rest.service.api.runtime.process.ExecutionQueryRequest;
 import org.flowable.rest.service.api.runtime.process.InjectActivityRequest;
 import org.flowable.rest.service.api.runtime.process.ProcessInstanceCreateRequest;
 import org.flowable.rest.service.api.runtime.process.ProcessInstanceQueryRequest;
+import org.flowable.rest.service.api.runtime.process.ProcessInstanceUpdateRequest;
 import org.flowable.rest.service.api.runtime.process.SignalEventReceivedRequest;
 import org.flowable.rest.service.api.runtime.task.TaskActionRequest;
 import org.flowable.rest.service.api.runtime.task.TaskQueryRequest;
@@ -94,7 +98,9 @@ public interface BpmnRestApiInterceptor {
     void accessProcessInstanceInfoWithQuery(ProcessInstanceQuery processInstanceQuery, ProcessInstanceQueryRequest request);
     
     void createProcessInstance(ProcessInstanceBuilder processInstanceBuilder, ProcessInstanceCreateRequest request);
-    
+
+    void updateProcessInstance(ProcessInstance processInstance, ProcessInstanceUpdateRequest updateRequest);
+
     void deleteProcessInstance(ProcessInstance processInstance);
     
     void sendSignal(SignalEventReceivedRequest signalEventReceivedRequest);
@@ -102,6 +108,8 @@ public interface BpmnRestApiInterceptor {
     void changeActivityState(ExecutionChangeActivityStateRequest changeActivityStateRequest);
     
     void migrateProcessInstance(String processInstanceId, String migrationDocument);
+    
+    void migrateInstancesOfProcessDefinition(ProcessDefinition processDefinition, String migrationDocument);
     
     void injectActivity(InjectActivityRequest injectActivityRequest);
     
@@ -140,6 +148,16 @@ public interface BpmnRestApiInterceptor {
     void accessDeadLetterJobInfoWithQuery(DeadLetterJobQuery jobQuery);
     
     void deleteJob(Job job);
+    
+    void accessBatchInfoById(Batch batch);
+    
+    void accessBatchInfoWithQuery(BatchQuery batchQuery);
+    
+    void deleteBatch(Batch batch);
+    
+    void accessBatchPartInfoOfBatch(Batch batch);
+    
+    void accessBatchPartInfoById(BatchPart batchPart);
     
     void accessManagementInfo();
     

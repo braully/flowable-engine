@@ -27,6 +27,8 @@ import org.flowable.cmmn.converter.util.CmmnXmlUtil;
 import org.flowable.cmmn.converter.util.ListenerXmlConverterUtil;
 import org.flowable.cmmn.model.AbstractFlowableHttpHandler;
 import org.flowable.cmmn.model.BaseElement;
+import org.flowable.cmmn.model.Case;
+import org.flowable.cmmn.model.ChildTask;
 import org.flowable.cmmn.model.CmmnElement;
 import org.flowable.cmmn.model.CompletionNeutralRule;
 import org.flowable.cmmn.model.DecisionTask;
@@ -35,12 +37,14 @@ import org.flowable.cmmn.model.FieldExtension;
 import org.flowable.cmmn.model.FlowableHttpRequestHandler;
 import org.flowable.cmmn.model.FlowableHttpResponseHandler;
 import org.flowable.cmmn.model.FlowableListener;
+import org.flowable.cmmn.model.GenericEventListener;
+import org.flowable.cmmn.model.HasLifecycleListeners;
 import org.flowable.cmmn.model.HttpServiceTask;
 import org.flowable.cmmn.model.HumanTask;
 import org.flowable.cmmn.model.IOParameter;
+import org.flowable.cmmn.model.ParentCompletionRule;
 import org.flowable.cmmn.model.PlanItemControl;
-import org.flowable.cmmn.model.PlanItemDefinition;
-import org.flowable.cmmn.model.ProcessTask;
+import org.flowable.cmmn.model.SendEventServiceTask;
 import org.flowable.cmmn.model.ServiceTask;
 import org.flowable.common.engine.api.FlowableException;
 import org.slf4j.Logger;
@@ -76,36 +80,48 @@ public class ExtensionElementsXMLConverter extends CaseElementXmlConverter {
                     if (CmmnXmlConstants.ELEMENT_COMPLETION_NEUTRAL_RULE.equals(xtr.getLocalName())) {
                         readCompletionNeutralRule(xtr, conversionHelper);
                         
+                    } else if (CmmnXmlConstants.ELEMENT_PARENT_COMPLETION_RULE.equals(xtr.getLocalName())) {
+                        readParentCompletionRule(xtr, conversionHelper);
+
                     } else if (CmmnXmlConstants.ELEMENT_FIELD.equals(xtr.getLocalName())) {
                         readFieldExtension(xtr, conversionHelper);
-                        
+
                     } else if (CmmnXmlConstants.ELEMENT_HTTP_REQUEST_HANDLER.equals(xtr.getLocalName())) {
                         readHttpRequestHandler(xtr, conversionHelper);
-                        
+
                     } else if (CmmnXmlConstants.ELEMENT_HTTP_RESPONSE_HANDLER.equals(xtr.getLocalName())) {
                         readHttpResponseHandler(xtr, conversionHelper);
-                        
-                    } else if (CmmnXmlConstants.ELEMENT_PROCESS_TASK_IN_PARAMETERS.equals(xtr.getLocalName())) {
+
+                    } else if (CmmnXmlConstants.ELEMENT_CHILD_TASK_IN_PARAMETERS.equals(xtr.getLocalName())) {
                         readIOParameter(xtr, true, conversionHelper);
-                        
-                    } else if (CmmnXmlConstants.ELEMENT_PROCESS_TASK_OUT_PARAMETERS.equals(xtr.getLocalName())) {
+
+                    } else if (CmmnXmlConstants.ELEMENT_CHILD_TASK_OUT_PARAMETERS.equals(xtr.getLocalName())) {
                         readIOParameter(xtr, false, conversionHelper);
-                        
+
                     } else if (CmmnXmlConstants.ELEMENT_TASK_LISTENER.equals(xtr.getLocalName())) {
                         readTaskListener(xtr, conversionHelper);
 
-                    } else if (CmmnXmlConstants.ELEMENT_PLAN_ITEM_LIFECYCLE_LISTENER.equals(xtr.getLocalName())) {
+                    } else if (CmmnXmlConstants.ELEMENT_PLAN_ITEM_LIFECYCLE_LISTENER.equals(xtr.getLocalName()) ||
+                                    CmmnXmlConstants.ELEMENT_CASE_LIFECYCLE_LISTENER.equals(xtr.getLocalName())) {
+                        
                         readLifecycleListener(xtr, conversionHelper);
+
+                    } else if (CmmnXmlConstants.ELEMENT_EVENT_TYPE.equals(xtr.getLocalName())) {
+                        readEventType(xtr, conversionHelper);
 
                     } else {
                         ExtensionElement extensionElement = CmmnXmlUtil.parseExtensionElement(xtr);
                         conversionHelper.getCurrentCmmnElement().addExtensionElement(extensionElement);
+
                     }
-                    
+
                 } else if (xtr.isEndElement()) {
                     if (CmmnXmlConstants.ELEMENT_TASK_LISTENER.equalsIgnoreCase(xtr.getLocalName())
-                        || CmmnXmlConstants.ELEMENT_PLAN_ITEM_LIFECYCLE_LISTENER.equalsIgnoreCase(xtr.getLocalName())) {
+                                    || CmmnXmlConstants.ELEMENT_PLAN_ITEM_LIFECYCLE_LISTENER.equalsIgnoreCase(xtr.getLocalName())
+                                    || CmmnXmlConstants.ELEMENT_CASE_LIFECYCLE_LISTENER.equalsIgnoreCase(xtr.getLocalName())) {
+                        
                         conversionHelper.removeCurrentCmmnElement();
+                        
                     } else if (CmmnXmlConstants.ELEMENT_EXTENSION_ELEMENTS.equalsIgnoreCase(xtr.getLocalName())) {
                         readyWithChildElements = true;
                     }
@@ -116,7 +132,7 @@ public class ExtensionElementsXMLConverter extends CaseElementXmlConverter {
             LOGGER.error("Error processing CMMN document", ex);
             throw new XMLException("Error processing CMMN document", ex);
         }
-   
+
         return null;
     }
 
@@ -127,9 +143,9 @@ public class ExtensionElementsXMLConverter extends CaseElementXmlConverter {
 
             PlanItemControl planItemControl = (PlanItemControl) conversionHelper.getCurrentCmmnElement();
             planItemControl.setCompletionNeutralRule(completionNeutralRule);
-            
+
             readCommonXmlInfo(completionNeutralRule, xtr);
-            
+
             boolean readyWithChildElements = false;
             try {
 
@@ -142,8 +158,8 @@ public class ExtensionElementsXMLConverter extends CaseElementXmlConverter {
                                 completionNeutralRule.setCondition(xtr.getText());
                             }
                             break;
-                        } 
-                        
+                        }
+
                     } else if (xtr.isEndElement()) {
                         if (CmmnXmlConstants.ELEMENT_COMPLETION_NEUTRAL_RULE.equalsIgnoreCase(xtr.getLocalName())) {
                             readyWithChildElements = true;
@@ -158,6 +174,19 @@ public class ExtensionElementsXMLConverter extends CaseElementXmlConverter {
         }
     }
     
+    protected void readParentCompletionRule(XMLStreamReader xtr, ConversionHelper conversionHelper) {
+        if (conversionHelper.getCurrentCmmnElement() instanceof PlanItemControl) {
+            ParentCompletionRule parentCompletionRule = new ParentCompletionRule();
+            parentCompletionRule.setName(xtr.getAttributeValue(null, CmmnXmlConstants.ATTRIBUTE_NAME));
+            parentCompletionRule.setType(xtr.getAttributeValue(null, CmmnXmlConstants.ATTRIBUTE_TYPE));
+
+            PlanItemControl planItemControl = (PlanItemControl) conversionHelper.getCurrentCmmnElement();
+            planItemControl.setParentCompletionRule(parentCompletionRule);
+
+            readCommonXmlInfo(parentCompletionRule, xtr);
+        }
+    }
+
     protected void readFieldExtension(XMLStreamReader xtr, ConversionHelper conversionHelper) {
         BaseElement cmmnElement = conversionHelper.getCurrentCmmnElement();
 
@@ -202,11 +231,11 @@ public class ExtensionElementsXMLConverter extends CaseElementXmlConverter {
             ((FlowableListener) currentCmmnElement).getFieldExtensions().add(extension);
 
         } else {
-            throw new FlowableException("Programmatic error: field added to unkown element " + currentCmmnElement);
+            throw new FlowableException("Programmatic error: field added to unkown element '" + currentCmmnElement + "'");
 
         }
     }
-    
+
     protected void readHttpRequestHandler(XMLStreamReader xtr, ConversionHelper conversionHelper) {
         BaseElement cmmnElement = conversionHelper.getCurrentCmmnElement();
         if (!(cmmnElement instanceof HttpServiceTask)) {
@@ -218,7 +247,7 @@ public class ExtensionElementsXMLConverter extends CaseElementXmlConverter {
 
         ((HttpServiceTask) cmmnElement).setHttpRequestHandler(requestHandler);
     }
-    
+
     protected void readHttpResponseHandler(XMLStreamReader xtr, ConversionHelper conversionHelper) {
         BaseElement cmmnElement = conversionHelper.getCurrentCmmnElement();
         if (!(cmmnElement instanceof HttpServiceTask)) {
@@ -230,13 +259,14 @@ public class ExtensionElementsXMLConverter extends CaseElementXmlConverter {
 
         ((HttpServiceTask) cmmnElement).setHttpResponseHandler(responseHandler);
     }
-    
+
     protected void readIOParameter(XMLStreamReader xtr, boolean isInParameter, ConversionHelper conversionHelper) {
-        if (!(conversionHelper.getCurrentCmmnElement() instanceof ProcessTask)) {
+        CmmnElement currentCmmnElement = conversionHelper.getCurrentCmmnElement();
+        if (!(currentCmmnElement instanceof ChildTask)) {
             return;
         }
-        
-        ProcessTask processTask = (ProcessTask) conversionHelper.getCurrentCmmnElement();
+
+        ChildTask childTask = (ChildTask) currentCmmnElement;
         String source = xtr.getAttributeValue(null, CmmnXmlConstants.ATTRIBUTE_IOPARAMETER_SOURCE);
         String sourceExpression = xtr.getAttributeValue(null, CmmnXmlConstants.ATTRIBUTE_IOPARAMETER_SOURCE_EXPRESSION);
         String target = xtr.getAttributeValue(null, CmmnXmlConstants.ATTRIBUTE_IOPARAMETER_TARGET);
@@ -257,9 +287,9 @@ public class ExtensionElementsXMLConverter extends CaseElementXmlConverter {
         }
 
         if (isInParameter) {
-            processTask.getInParameters().add(parameter);
+            childTask.getInParameters().add(parameter);
         } else {
-            processTask.getOutParameters().add(parameter);
+            childTask.getOutParameters().add(parameter);
         }
     }
 
@@ -284,18 +314,18 @@ public class ExtensionElementsXMLConverter extends CaseElementXmlConverter {
 
         FlowableListener flowableListener = ListenerXmlConverterUtil.convertToListener(xtr);
         if (flowableListener != null) {
-            if (currentCmmnElement instanceof PlanItemDefinition) {
-                PlanItemDefinition planItemDefinition = (PlanItemDefinition) currentCmmnElement;
-                planItemDefinition.getLifecycleListeners().add(flowableListener);
+            if (currentCmmnElement instanceof HasLifecycleListeners) {
+                HasLifecycleListeners lifecycleListenersElement = (HasLifecycleListeners) currentCmmnElement;
+                lifecycleListenersElement.getLifecycleListeners().add(flowableListener);
             } else {
-                throw new FlowableException("Programmatic error: task listener added to an element that is not a plan item definition, but a " + currentCmmnElement.getClass());
+                throw new FlowableException("Programmatic error: lifecycle listener added to an element that is not a plan item definition, but a " + currentCmmnElement.getClass());
             }
         }
 
         conversionHelper.setCurrentCmmnElement(flowableListener);
 
     }
-    
+
     protected void setImplementation(XMLStreamReader xtr, AbstractFlowableHttpHandler handler) {
         if (StringUtils.isNotEmpty(xtr.getAttributeValue(null, ATTRIBUTE_CLASS))) {
             handler.setImplementation(xtr.getAttributeValue(null, ATTRIBUTE_CLASS));
@@ -306,7 +336,39 @@ public class ExtensionElementsXMLConverter extends CaseElementXmlConverter {
             handler.setImplementationType(IMPLEMENTATION_TYPE_DELEGATEEXPRESSION);
         }
     }
-    
+
+    protected void readEventType(XMLStreamReader xtr, ConversionHelper conversionHelper) {
+        CmmnElement currentCmmnElement = conversionHelper.getCurrentCmmnElement();
+
+        String eventType = null;
+        try {
+
+            // Parsing and storing as an extension element, which means the export will work automatically
+            ExtensionElement extensionElement = CmmnXmlUtil.parseExtensionElement(xtr);
+            eventType = extensionElement.getElementText();
+            
+        } catch (Exception e) {
+            throw new FlowableException("Error while reading eventType element", e);
+        }
+
+        if (currentCmmnElement instanceof Case) {
+            Case caze = (Case) currentCmmnElement;
+            caze.setStartEventType(eventType);
+
+        } else if (currentCmmnElement instanceof SendEventServiceTask) {
+            SendEventServiceTask sendEventServiceTask = (SendEventServiceTask) currentCmmnElement;
+            sendEventServiceTask.setEventType(eventType);
+
+        } else if (currentCmmnElement instanceof GenericEventListener) {
+            GenericEventListener genericEventListener = (GenericEventListener) currentCmmnElement;
+            genericEventListener.setEventType(eventType);
+
+        } else {
+            LOGGER.warn("Unsupported eventType detected for element {}", currentCmmnElement);
+
+        }
+    }
+
     protected void readCommonXmlInfo(BaseElement baseElement, XMLStreamReader xtr) {
         baseElement.setId(xtr.getAttributeValue(null, CmmnXmlConstants.ATTRIBUTE_ID));
         Location location = xtr.getLocation();

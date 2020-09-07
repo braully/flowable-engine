@@ -12,6 +12,10 @@
  */
 package org.flowable.common.engine.api.scope;
 
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+
 /**
  * @author Joram Barrez
  */
@@ -20,5 +24,16 @@ public interface ScopeTypes {
     String APP = "app";
     String BPMN = "bpmn";
     String CMMN = "cmmn";
+    String DMN = "dmn";
+    String EVENT_REGISTRY = "eventRegistry";
+    String FORM = "form";
+    String PLAN_ITEM = "planItem";
     String TASK = "task";
+    String EXTERNAL_WORKER = "externalWorker";
+
+    String CMMN_EXTERNAL_WORKER = "cmmnExternalWorker";
+    String BPMN_EXTERNAL_WORKER = "bpmnExternalWorker";
+
+    Collection<String> CMMN_DEPENDENT = new HashSet<>(Arrays.asList(CMMN, CMMN_EXTERNAL_WORKER));
+    Collection<String> BPMN_DEPENDENT = new HashSet<>(Arrays.asList(BPMN_EXTERNAL_WORKER));
 }

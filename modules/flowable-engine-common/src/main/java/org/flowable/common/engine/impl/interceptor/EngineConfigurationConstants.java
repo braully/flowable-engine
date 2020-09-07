@@ -27,6 +27,8 @@ public interface EngineConfigurationConstants {
     String KEY_CMMN_ENGINE_CONFIG = "cfg.cmmnEngine";
     
     String KEY_APP_ENGINE_CONFIG = "cfg.appEngine";
+    
+    String KEY_EVENT_REGISTRY_CONFIG = "cfg.eventRegistry";
 
     String KEY_TASK_SERVICE_CONFIG = "cfg.taskService";
     
@@ -40,11 +42,15 @@ public interface EngineConfigurationConstants {
     
     String KEY_JOB_SERVICE_CONFIG = "cfg.jobService";
     
+    String KEY_BATCH_SERVICE_CONFIG = "cfg.batchService";
+    
     int PRIORITY_ENGINE_PROCESS = 50000;
     
-    int PRIORITY_ENGINE_IDM = 100000;
+    int PRIORITY_ENGINE_EVENT_REGISTRY = 100000;
     
-    int PRIORITY_ENGINE_DMN = PRIORITY_ENGINE_IDM + 100000;
+    int PRIORITY_ENGINE_IDM = PRIORITY_ENGINE_EVENT_REGISTRY + 50000;
+    
+    int PRIORITY_ENGINE_DMN = PRIORITY_ENGINE_IDM + 50000;
     
     int PRIORITY_ENGINE_FORM = PRIORITY_ENGINE_DMN + 100000;
     

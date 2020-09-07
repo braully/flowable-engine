@@ -12,6 +12,7 @@
  */
 package org.flowable.cmmn.engine.impl.history.async.json.transformer;
 
+import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonUtil.getBooleanFromJson;
 import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonUtil.getDateFromJson;
 import static org.flowable.job.service.impl.history.async.util.AsyncHistoryJsonUtil.getStringFromJson;
 
@@ -52,11 +53,13 @@ public class PlanItemInstanceFullHistoryJsonTransformer extends AbstractPlanItem
             historicPlanItemInstanceEntity = historicPlanItemInstanceEntityManager.create();
             copyCommonPlanItemInstanceProperties(historicPlanItemInstanceEntity, historicalData);
             historicPlanItemInstanceEntityManager.insert(historicPlanItemInstanceEntity);
+            
         } else {
             // If there is already a historic plan item instance it means that the last update time must not be null
             Date lastUpdateTime = getDateFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_LAST_UPDATE_TIME);
-            if (lastUpdateTime != null && (historicPlanItemInstanceEntity.getLastUpdatedTime() == null || lastUpdateTime
-                .after(historicPlanItemInstanceEntity.getLastUpdatedTime()))) {
+            if (lastUpdateTime != null && (historicPlanItemInstanceEntity.getLastUpdatedTime() == null || 
+                            lastUpdateTime.after(historicPlanItemInstanceEntity.getLastUpdatedTime()))) {
+                
                 copyCommonPlanItemInstanceProperties(historicPlanItemInstanceEntity, historicalData);
                 CommandContextUtil.getHistoricPlanItemInstanceEntityManager(commandContext).update(historicPlanItemInstanceEntity);
             }
@@ -68,6 +71,7 @@ public class PlanItemInstanceFullHistoryJsonTransformer extends AbstractPlanItem
         super.copyCommonPlanItemInstanceProperties(historicPlanItemInstanceEntity, historicalData);
 
         historicPlanItemInstanceEntity.setLastAvailableTime(getDateFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_LAST_AVAILABLE_TIME));
+        historicPlanItemInstanceEntity.setLastUnavailableTime(getDateFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_LAST_UNAVAILABLE_TIME));
         historicPlanItemInstanceEntity.setLastEnabledTime(getDateFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_LAST_ENABLED_TIME));
         historicPlanItemInstanceEntity.setLastDisabledTime(getDateFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_LAST_DISABLED_TIME));
         historicPlanItemInstanceEntity.setLastStartedTime(getDateFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_LAST_STARTED_TIME));
@@ -77,6 +81,11 @@ public class PlanItemInstanceFullHistoryJsonTransformer extends AbstractPlanItem
         historicPlanItemInstanceEntity.setTerminatedTime(getDateFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_TERMINATED_TIME));
         historicPlanItemInstanceEntity.setExitTime(getDateFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_EXIT_TIME));
         historicPlanItemInstanceEntity.setEndedTime(getDateFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_END_TIME));
+        historicPlanItemInstanceEntity.setExtraValue(getStringFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_EXTRA_VALUE));
+        
+        if (historicalData.has(CmmnAsyncHistoryConstants.FIELD_IS_SHOW_IN_OVERVIEW)) {
+            historicPlanItemInstanceEntity.setShowInOverview(getBooleanFromJson(historicalData, CmmnAsyncHistoryConstants.FIELD_IS_SHOW_IN_OVERVIEW));
+        }
     }
 
     protected HistoricPlanItemInstanceEntity getHistoricPlanItemInstanceEntity(ObjectNode historicalData, CommandContext commandContext) {

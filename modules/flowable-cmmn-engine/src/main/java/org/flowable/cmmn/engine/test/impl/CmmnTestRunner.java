@@ -12,7 +12,9 @@
  */
 package org.flowable.cmmn.engine.test.impl;
 
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.flowable.cmmn.api.CmmnRepositoryService;
@@ -21,12 +23,16 @@ import org.flowable.cmmn.engine.CmmnEngineConfiguration;
 import org.flowable.cmmn.engine.impl.deployer.CmmnDeployer;
 import org.flowable.cmmn.engine.test.CmmnDeployment;
 import org.flowable.common.engine.api.FlowableException;
-import org.junit.Assert;
+import org.flowable.common.engine.impl.test.EnsureCleanDbUtils;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
+import org.junit.runners.model.MultipleFailureException;
+import org.junit.runners.model.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +44,19 @@ public class CmmnTestRunner extends BlockJUnit4ClassRunner {
     private static final Logger LOGGER = LoggerFactory.getLogger(CmmnTestRunner.class);
     
     protected static CmmnEngineConfiguration cmmnEngineConfiguration;
+    protected static String deploymentId;
+
+    protected static final List<String> TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK = Arrays.asList(
+            "ACT_GE_PROPERTY",
+            "ACT_ID_PROPERTY",
+            "ACT_CMMN_DATABASECHANGELOG",
+            "ACT_CMMN_DATABASECHANGELOGLOCK",
+            "ACT_FO_DATABASECHANGELOG",
+            "ACT_FO_DATABASECHANGELOGLOCK",
+            "FLW_EV_DATABASECHANGELOG",
+            "FLW_EV_DATABASECHANGELOGLOCK"
+    );
+
 
     public CmmnTestRunner(Class<?> klass) throws InitializationError {
         super(klass);
@@ -53,18 +72,76 @@ public class CmmnTestRunner extends BlockJUnit4ClassRunner {
     
     @Override
     protected void runChild(FrameworkMethod method, RunNotifier notifier) {
-        String deploymentId = null;
-        if (method.getAnnotation(Ignore.class) == null && method.getAnnotation(CmmnDeployment.class) != null) {
-            deploymentId = deployCmmnDefinition(method);
+        try {
+            super.runChild(method, notifier);
+        } catch (Throwable e) {
+            e.printStackTrace();
         }
-        
-        super.runChild(method, notifier);
-        
-        if (deploymentId != null) {
-            deleteDeployment(deploymentId);
-        }
-        assertDatabaseEmpty(method);
     }
+
+    @Override
+    protected Statement withBefores(FrameworkMethod method, Object target, Statement statement) {
+        if (method.getAnnotation(Ignore.class) == null && method.getAnnotation(CmmnDeployment.class) != null) {
+
+            List<FrameworkMethod> befores = getTestClass().getAnnotatedMethods(Before.class);
+
+            return new Statement() {
+
+                @Override
+                public void evaluate() throws Throwable {
+                    for (FrameworkMethod before : befores) {
+                        before.invokeExplosively(target);
+                    }
+                    deploymentId = deployCmmnDefinition(method);
+                    statement.evaluate();
+                }
+
+            };
+        } else {
+            return super.withBefores(method, target, statement);
+        }
+
+    }
+
+    @Override
+    protected Statement withAfters(FrameworkMethod method, Object target, Statement statement) {
+        List<FrameworkMethod> afters = getTestClass().getAnnotatedMethods(After.class);
+
+        return new Statement() {
+
+            @Override
+            public void evaluate() throws Throwable {
+                List<Throwable> errors = new ArrayList<>();
+                try {
+                    statement.evaluate();
+                } catch (Throwable e) {
+                    errors.add(e);
+                } finally {
+
+                    if (deploymentId != null) {
+                        deleteDeployment(deploymentId);
+                        deploymentId = null;
+                    }
+
+                    for (FrameworkMethod each : afters) {
+                        try {
+                            each.invokeExplosively(target);
+                        } catch (Throwable e) {
+                            errors.add(e);
+                        }
+                    }
+
+                    if (errors == null || errors.isEmpty()) {
+                        assertDatabaseEmpty(method);
+                    }
+
+                }
+                MultipleFailureException.assertEmpty(errors);
+            }
+
+        };
+    }
+
 
     protected String deployCmmnDefinition(FrameworkMethod method) {
         try {
@@ -117,26 +194,14 @@ public class CmmnTestRunner extends BlockJUnit4ClassRunner {
     }
     
     protected void assertDatabaseEmpty(FrameworkMethod method) {
-        Map<String, Long> tableCounts = cmmnEngineConfiguration.getCmmnManagementService().getTableCounts();
-        
-        StringBuilder outputMessage = new StringBuilder();
-        for (String table : tableCounts.keySet()) {
-            long count = tableCounts.get(table);
-            if (count != 0) {
-                outputMessage.append("  ").append(table).append(": ").append(count).append(" record(s) ");
-            }
-        }
-        
-        if (outputMessage.length() > 0) {
-            outputMessage.insert(0, "DB not clean for test " + getTestClass().getName() + "." + method.getName() + ": \n");
-            LOGGER.error("\n");
-            LOGGER.error(outputMessage.toString());
-            Assert.fail(outputMessage.toString());
-
-        } else {
-            LOGGER.info("database was clean");
-            
-        }
+        EnsureCleanDbUtils.assertAndEnsureCleanDb(
+                getTestClass().getName() + "." + method.getName(),
+                LOGGER,
+                cmmnEngineConfiguration,
+                TABLENAMES_EXCLUDED_FROM_DB_CLEAN_CHECK,
+                true,
+                null
+        );
     }
 
 }

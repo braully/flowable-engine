@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.flowable.common.engine.api.repository.EngineResource;
 import org.flowable.common.engine.impl.interceptor.Command;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
@@ -55,7 +56,10 @@ public class DeployCmd<T> implements Command<DmnDeployment>, Serializable {
 
             List<DmnDeployment> existingDeployments = new ArrayList<>();
             if (deployment.getTenantId() == null || DmnEngineConfiguration.NO_TENANT_ID.equals(deployment.getTenantId())) {
-                List<DmnDeployment> deploymentEntities = new DmnDeploymentQueryImpl(CommandContextUtil.getDmnEngineConfiguration().getCommandExecutor()).deploymentName(deployment.getName()).listPage(0, 1);
+                List<DmnDeployment> deploymentEntities = new DmnDeploymentQueryImpl(CommandContextUtil.getDmnEngineConfiguration().getCommandExecutor())
+                        .deploymentName(deployment.getName())
+                        .orderByDeploymentTime().desc()
+                        .listPage(0, 1);
                 if (!deploymentEntities.isEmpty()) {
                     existingDeployments.add(deploymentEntities.get(0));
                 }
@@ -63,18 +67,16 @@ public class DeployCmd<T> implements Command<DmnDeployment>, Serializable {
                 List<DmnDeployment> deploymentList = CommandContextUtil.getDmnEngineConfiguration().getDmnRepositoryService().createDeploymentQuery()
                         .deploymentName(deployment.getName())
                         .deploymentTenantId(deployment.getTenantId())
-                        .orderByDeploymentId()
-                        .desc()
-                        .list();
+                        .orderByDeploymentTime().desc()
+                        .listPage(0, 1);
 
                 if (!deploymentList.isEmpty()) {
                     existingDeployments.addAll(deploymentList);
                 }
             }
 
-            DmnDeploymentEntity existingDeployment = null;
             if (!existingDeployments.isEmpty()) {
-                existingDeployment = (DmnDeploymentEntity) existingDeployments.get(0);
+                DmnDeploymentEntity existingDeployment = (DmnDeploymentEntity) existingDeployments.get(0);
 
                 Map<String, EngineResource> resourceMap = new HashMap<>();
                 List<DmnResourceEntity> resourceList = CommandContextUtil.getResourceEntityManager().findResourcesByDeploymentId(existingDeployment.getId());
@@ -82,10 +84,10 @@ public class DeployCmd<T> implements Command<DmnDeployment>, Serializable {
                     resourceMap.put(resourceEntity.getName(), resourceEntity);
                 }
                 existingDeployment.setResources(resourceMap);
-            }
-
-            if ((existingDeployment != null) && !deploymentsDiffer(deployment, existingDeployment)) {
-                return existingDeployment;
+                
+                if (!deploymentsDiffer(deployment, existingDeployment)) {
+                    return existingDeployment;
+                }
             }
         }
 
@@ -93,6 +95,13 @@ public class DeployCmd<T> implements Command<DmnDeployment>, Serializable {
 
         // Save the data
         CommandContextUtil.getDeploymentEntityManager(commandContext).insert(deployment);
+
+        if (StringUtils.isEmpty(deployment.getParentDeploymentId())) {
+            // If no parent deployment id is set then set the current ID as the parent
+            // If something was deployed via this command than this deployment would
+            // be a parent deployment to other potential child deployments
+            deployment.setParentDeploymentId(deployment.getId());
+        }
 
         // Deployment settings
         Map<String, Object> deploymentSettings = new HashMap<>();

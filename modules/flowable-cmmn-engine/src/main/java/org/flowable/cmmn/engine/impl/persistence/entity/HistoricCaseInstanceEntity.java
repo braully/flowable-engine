@@ -29,12 +29,18 @@ public interface HistoricCaseInstanceEntity extends Entity, HasRevision, Histori
     void setName(String name);
     void setParentId(String parentId);
     void setCaseDefinitionId(String caseDefinitionId);
+    void setCaseDefinitionKey(String caseDefinitionKey);
+    void setCaseDefinitionName(String caseDefinitionName);
+    void setCaseDefinitionVersion(Integer caseDefinitionVersion);
+    void setCaseDefinitionDeploymentId(String caseDefinitionDeploymentId);
     void setState(String state);
     void setStartTime(Date startTime);
     void setEndTime(Date endTime);
     void setStartUserId(String startUserId);
     void setCallbackId(String callbackId);
     void setCallbackType(String callbackType);
+    void setReferenceId(String referenceId);
+    void setReferenceType(String referenceType);
     void setTenantId(String tenantId);
 
     List<HistoricVariableInstanceEntity> getQueryVariables();

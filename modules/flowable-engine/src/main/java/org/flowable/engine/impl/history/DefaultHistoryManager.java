@@ -119,7 +119,7 @@ public class DefaultHistoryManager extends AbstractHistoryManager {
     }
 
     @Override
-    public void recordProcessInstanceDeleted(String processInstanceId, String processDefinitionId) {
+    public void recordProcessInstanceDeleted(String processInstanceId, String processDefinitionId, String processTenantId) {
         if (getHistoryManager().isHistoryEnabled(processDefinitionId)) {
             HistoricProcessInstanceEntity historicProcessInstance = getHistoricProcessInstanceEntityManager().findById(processInstanceId);
 
@@ -143,7 +143,7 @@ public class DefaultHistoryManager extends AbstractHistoryManager {
 
             List<HistoricProcessInstance> selectList = getHistoricProcessInstanceEntityManager().findHistoricProcessInstancesBySuperProcessInstanceId(processInstanceId);
             for (HistoricProcessInstance child : selectList) {
-                recordProcessInstanceDeleted(child.getId(), processDefinitionId);
+                recordProcessInstanceDeleted(child.getId(), processDefinitionId, child.getTenantId());
             }
         }
     }
@@ -153,7 +153,8 @@ public class DefaultHistoryManager extends AbstractHistoryManager {
         if (getHistoryManager().isHistoryEnabled(processDefinitionId)) {
             List<String> historicProcessInstanceIds = getHistoricProcessInstanceEntityManager().findHistoricProcessInstanceIdsByProcessDefinitionId(processDefinitionId);
             for (String historicProcessInstanceId : historicProcessInstanceIds) {
-                recordProcessInstanceDeleted(historicProcessInstanceId, processDefinitionId);
+                // The tenantId is not important for the DefaultHistoryManager
+                recordProcessInstanceDeleted(historicProcessInstanceId, processDefinitionId, null);
             }
         }
     }
@@ -417,11 +418,15 @@ public class DefaultHistoryManager extends AbstractHistoryManager {
             historicEntityLinkEntity.setLinkType(entityLink.getLinkType());
             historicEntityLinkEntity.setCreateTime(entityLink.getCreateTime());
             historicEntityLinkEntity.setScopeId(entityLink.getScopeId());
+            historicEntityLinkEntity.setSubScopeId(entityLink.getSubScopeId());
             historicEntityLinkEntity.setScopeType(entityLink.getScopeType());
             historicEntityLinkEntity.setScopeDefinitionId(entityLink.getScopeDefinitionId());
+            historicEntityLinkEntity.setParentElementId(entityLink.getParentElementId());
             historicEntityLinkEntity.setReferenceScopeId(entityLink.getReferenceScopeId());
             historicEntityLinkEntity.setReferenceScopeType(entityLink.getReferenceScopeType());
             historicEntityLinkEntity.setReferenceScopeDefinitionId(entityLink.getReferenceScopeDefinitionId());
+            historicEntityLinkEntity.setRootScopeId(entityLink.getRootScopeId());
+            historicEntityLinkEntity.setRootScopeType(entityLink.getRootScopeType());
             historicEntityLinkEntity.setHierarchyType(entityLink.getHierarchyType());
             historicEntityLinkService.insertHistoricEntityLink(historicEntityLinkEntity, false);
         }
@@ -535,6 +540,7 @@ public class DefaultHistoryManager extends AbstractHistoryManager {
         historicActivityInstanceEntity.setEndTime(activityInstance.getEndTime());
         historicActivityInstanceEntity.setDeleteReason(activityInstance.getDeleteReason());
         historicActivityInstanceEntity.setDurationInMillis(activityInstance.getDurationInMillis());
+        historicActivityInstanceEntity.setTransactionOrder(activityInstance.getTransactionOrder());
         historicActivityInstanceEntity.setTenantId(activityInstance.getTenantId());
 
 

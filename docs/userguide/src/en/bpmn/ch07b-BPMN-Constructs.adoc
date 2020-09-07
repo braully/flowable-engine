@@ -184,7 +184,7 @@ The ++signalEventDefinition++s reference the same +signal+ element.
 
 ===== Throwing a Signal Event
 
-A signal can either be thrown by a process instance using a BPMN construct or programmatically using java API. The following methods on the +org.flowable.engine.RuntimeService+ can be used to throw a signal programmatically:
+A signal can either be thrown by a process instance using a BPMN construct or programmatically using the Java API. The following methods on the +org.flowable.engine.RuntimeService+ can be used to throw a signal programmatically:
 
 [source,java,linenums]
 ----
@@ -1382,7 +1382,7 @@ A message intermediate event is defined as an <<bpmnIntermediateCatchingEvent,in
 [source,xml,linenums]
 ----
 <intermediateCatchEvent id="message">
-  <messageEventDefinition signalRef="newCustomerMessage" />
+  <messageEventDefinition messageRef="newCustomerMessage" />
 </intermediateCatchEvent>
 ----
 
@@ -3045,7 +3045,7 @@ It is possible to throw BPMN Errors from user code inside Service Tasks or Scrip
 ----
 public class ThrowBpmnErrorDelegate implements JavaDelegate {
 
-  public void execute(DelegateExecution execution) throws Exception {
+  public void execute(DelegateExecution execution) {
     try {
       executeBusinessLogic();
     } catch (BusinessException e) {
@@ -3164,7 +3164,7 @@ For some use cases, it might be necessary to use the Flowable services from with
 ----
 public class StartProcessInstanceTestDelegate implements JavaDelegate {
 
-  public void execute(DelegateExecution execution) throws Exception {
+  public void execute(DelegateExecution execution) {
     RuntimeService runtimeService = Context.getProcessEngineConfiguration().getRuntimeService();
     runtimeService.startProcessInstanceByKey("myProcess");
   }
@@ -3461,7 +3461,7 @@ The Flowable engine sends e-mails trough an external mail server with SMTP capab
 |mailServerHost|no|The hostname of your mail server (for example, mail.mycorp.com). Default is +localhost+
 |mailServerPort|yes, if not on the default port|The port for SMTP traffic on the mail server. The default is _25_
 |mailServerForceTo|no|If set it will be used as a replacement of the configured to, cc and / or bcc in the Mail Task when sending out emails.
-|mailServerDefaultFrom|no|The default e-mail address of the sender of e-mails, when none is provided by the user. By default this is _flowable@flowable.org_
+|mailServerDefaultFrom|no|The default e-mail address of the sender of e-mails, when none is provided by the user. By default this is _flowable@localhost_
 |mailServerUsername|if applicable for your server|Some mail servers require credentials for sending e-mail. By default not set.
 |mailServerPassword|if applicable for your server|Some mail servers require credentials for sending e-mail. By default not set.
 |mailServerUseSSL|if applicable for your server|Some mail servers require ssl communication. By default set to false.
@@ -4245,7 +4245,7 @@ The Shell task is configured by <<serviceTaskFieldInjection,field injection>>. A
 |===============
 |Property|Required?|Type|Description|Default
 |command|yes|String|Shell command to execute.|
-|arg0-5|no|String|Parameter 0 to Parameter 5|
+|arg1-5|no|String|Parameter 1 to Parameter 5|
 |wait|no|true/false|Wait if necessary, until the shell process has terminated.|true
 |redirectError|no|true/false|Merge standard error with the standard output.|false
 |cleanEnv|no|true/false|Shell process does not inherit current environment.|false
@@ -4340,7 +4340,7 @@ The first execution listener is notified when the process starts. The listener i
 ----
 public class ExampleExecutionListenerOne implements ExecutionListener {
 
-  public void notify(ExecutionListenerExecution execution) throws Exception {
+  public void notify(ExecutionListenerExecution execution) {
     execution.setVariable("variableSetInExecutionListener", "firstValue");
     execution.setVariable("eventReceived", execution.getEventName());
   }
@@ -4431,7 +4431,7 @@ public class ExampleFieldInjectedExecutionListener implements ExecutionListener 
 
   private Expression dynamicValue;
 
-  public void notify(ExecutionListenerExecution execution) throws Exception {
+  public void notify(ExecutionListenerExecution execution) {
     execution.setVariable("var", fixedValue.getValue(execution).toString() +
         dynamicValue.getValue(execution).toString());
   }
@@ -4488,7 +4488,7 @@ A _task listener_ supports the following attributes:
 ** *assignment*: occurs when the task is assigned to somebody. Note: when process execution arrives in a userTask, first an _assignment_ event will be fired, *before* the _create_ event is fired. This might seem an unnatural order, but the reason is pragmatic: when receiving the _create_ event, we usually want to inspect all properties of the task including the assignee.
 ** *complete*: occurs when the task is completed and just before the task is deleted from the runtime data.
 ** *delete*: occurs just before the task is going to be deleted. Notice that it will also be executed when task is normally finished via completeTask.
-* *class*: the delegation class that must be called. This class must implement the +org.flowable.engine.delegate.TaskListener+ interface.
+* *class*: the delegation class that must be called. This class must implement the +org.flowable.task.service.delegate.TaskListener+ interface.
 
 [source,java,linenums]
 ----

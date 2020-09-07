@@ -116,6 +116,8 @@ public class ContinueMultiInstanceOperation extends AbstractOperation {
         job.setExecutionId(execution.getId());
         job.setProcessInstanceId(execution.getProcessInstanceId());
         job.setProcessDefinitionId(execution.getProcessDefinitionId());
+        job.setElementId(flowNode.getId());
+        job.setElementName(flowNode.getName());
         job.setJobHandlerType(AsyncContinuationJobHandler.TYPE);
 
         // Inherit tenant id (if applicable)
@@ -136,11 +138,7 @@ public class ContinueMultiInstanceOperation extends AbstractOperation {
         }
         MultiInstanceActivityBehavior multiInstanceActivityBehavior = (MultiInstanceActivityBehavior) activityBehavior;
         String elementIndexVariable = multiInstanceActivityBehavior.getCollectionElementIndexVariable();
-        if (!flowNode.isAsynchronous()) {
-            execution.setVariableLocal(elementIndexVariable, loopCounter);
-        } else {
-            multiInstanceRootExecution.setVariableLocal(elementIndexVariable, loopCounter);
-        }
+        execution.setVariableLocal(elementIndexVariable, loopCounter);
         return activityBehavior;
     }
     

@@ -16,6 +16,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
@@ -134,6 +135,9 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements SchemaMan
 
             if ("postgres".equals(databaseType)) {
                 tableName = tableName.toLowerCase();
+            } else if ("cockroachdb".equals(databaseType)) {
+                tableName = tableName.toLowerCase(); // same as postgres
+                schema = "public"; // CRDB only supports public right now
             }
 
             if (schema != null && "oracle".equals(databaseType)) {
@@ -180,11 +184,9 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements SchemaMan
         if (!getDbSqlSession().getDbSqlSessionFactory().isTablePrefixIsSchema()) {
             tableName = prependDatabaseTablePrefix(tableName);
         }
-        PreparedStatement statement = null;
-        try {
-            
-            statement = getDbSqlSession().getSqlSession().getConnection()
-                    .prepareStatement("select VALUE_ from " + tableName + " where NAME_ = ?");
+        try (PreparedStatement statement = getDbSqlSession().getSqlSession().getConnection()
+                .prepareStatement("select VALUE_ from " + tableName + " where NAME_ = ?")) {
+
             statement.setString(1, propertyName);
             ResultSet resultSet = statement.executeQuery();
             if (resultSet.next()) {
@@ -195,13 +197,6 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements SchemaMan
         } catch (SQLException e) {
             logger.error("Could not get property from table {}", tableName, e);
             return null;
-        } finally {
-            if (statement != null) {
-                try {
-                    statement.close();
-                } catch (SQLException e) {
-                }
-            }
         }
     }
     
@@ -246,7 +241,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements SchemaMan
             Connection connection = dbSqlSession.getSqlSession().getConnection();
             Exception exception = null;
             byte[] bytes = IoUtil.readInputStream(inputStream, resourceName);
-            String ddlStatements = new String(bytes);
+            String ddlStatements = new String(bytes, StandardCharsets.UTF_8);
 
             // Special DDL handling for certain databases
             try {
@@ -273,7 +268,15 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements SchemaMan
                     logger.debug(line.substring(2));
 
                 } else if (line.startsWith("-- ")) {
-                    logger.debug(line.substring(3));
+
+                    if ("-- force-commit".equals(line)) {
+                        connection.commit();
+                        logger.debug("Forcing commit");
+
+                    } else {
+                        logger.debug(line.substring(3));
+
+                    }
 
                 } else if (line.startsWith("execute java ")) {
                     String upgradestepClassName = line.substring(13).trim();
@@ -306,7 +309,7 @@ public abstract class AbstractSqlScriptBasedDbSchemaManager implements SchemaMan
 
                         Statement jdbcStatement = connection.createStatement();
                         try {
-                            // no logging needed as the connection will log it
+
                             logger.debug("SQL: {}", sqlStatement);
                             jdbcStatement.execute(sqlStatement);
                             jdbcStatement.close();

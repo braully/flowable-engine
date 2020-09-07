@@ -13,6 +13,7 @@
 
 package org.flowable.rest.service.api.runtime.task;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -43,6 +44,7 @@ public class TaskQueryRequest extends PaginateRequest {
     private String candidateUser;
     private String candidateGroup;
     private List<String> candidateGroupIn;
+    private boolean ignoreAssignee;
     private String involvedUser;
     private String processInstanceId;
     private String processInstanceIdWithChildren;
@@ -60,6 +62,7 @@ public class TaskQueryRequest extends PaginateRequest {
     private Boolean excludeSubTasks;
     private String taskDefinitionKey;
     private String taskDefinitionKeyLike;
+    private Collection<String> taskDefinitionKeys;
     private Date dueDate;
     private Date dueBefore;
     private Date dueAfter;
@@ -207,6 +210,14 @@ public class TaskQueryRequest extends PaginateRequest {
         this.candidateGroupIn = candidateGroupIn;
     }
 
+    public boolean isIgnoreAssignee() {
+        return ignoreAssignee;
+    }
+
+    public void setIgnoreAssignee(boolean ignoreAssignee) {
+        this.ignoreAssignee = ignoreAssignee;
+    }
+
     public String getInvolvedUser() {
         return involvedUser;
     }
@@ -301,6 +312,14 @@ public class TaskQueryRequest extends PaginateRequest {
 
     public void setTaskDefinitionKeyLike(String taskDefinitionKeyLike) {
         this.taskDefinitionKeyLike = taskDefinitionKeyLike;
+    }
+
+    public Collection<String> getTaskDefinitionKeys() {
+        return taskDefinitionKeys;
+    }
+
+    public void setTaskDefinitionKeys(Collection<String> taskDefinitionKeys) {
+        this.taskDefinitionKeys = taskDefinitionKeys;
     }
 
     public Date getDueDate() {

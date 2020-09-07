@@ -13,6 +13,7 @@
 
 package org.flowable.rest.service.api.history;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
@@ -44,6 +45,7 @@ public class HistoricTaskInstanceQueryRequest extends PaginateRequest {
     private String taskDescriptionLike;
     private String taskDefinitionKey;
     private String taskDefinitionKeyLike;
+    private Collection<String> taskDefinitionKeys;
     private String taskCategory;
     private String taskDeleteReason;
     private String taskDeleteReasonLike;
@@ -78,7 +80,9 @@ public class HistoricTaskInstanceQueryRequest extends PaginateRequest {
     private String tenantId;
     private String tenantIdLike;
     private Boolean withoutTenantId;
+    private Boolean withoutDeleteReason;
     private String taskCandidateGroup;
+    private boolean ignoreTaskAssignee;
 
     public String getTaskId() {
         return taskId;
@@ -214,6 +218,14 @@ public class HistoricTaskInstanceQueryRequest extends PaginateRequest {
 
     public void setTaskDefinitionKeyLike(String taskDefinitionKeyLike) {
         this.taskDefinitionKeyLike = taskDefinitionKeyLike;
+    }
+
+    public Collection<String> getTaskDefinitionKeys() {
+        return taskDefinitionKeys;
+    }
+
+    public void setTaskDefinitionKeys(Collection<String> taskDefinitionKeys) {
+        this.taskDefinitionKeys = taskDefinitionKeys;
     }
 
     public String getTaskCategory() {
@@ -490,6 +502,14 @@ public class HistoricTaskInstanceQueryRequest extends PaginateRequest {
         this.withoutTenantId = withoutTenantId;
     }
 
+    public Boolean getWithoutDeleteReason() {
+        return withoutDeleteReason;
+    }
+
+    public void setWithoutDeleteReason(Boolean withoutDeleteReason) {
+        this.withoutDeleteReason = withoutDeleteReason;
+    }
+
     public String getTaskCandidateGroup() {
         return taskCandidateGroup;
     }
@@ -498,4 +518,11 @@ public class HistoricTaskInstanceQueryRequest extends PaginateRequest {
         this.taskCandidateGroup = taskCandidateGroup;
     }
 
+    public boolean isIgnoreTaskAssignee() {
+        return ignoreTaskAssignee;
+    }
+
+    public void setIgnoreTaskAssignee(boolean ignoreTaskAssignee) {
+        this.ignoreTaskAssignee = ignoreTaskAssignee;
+    }
 }

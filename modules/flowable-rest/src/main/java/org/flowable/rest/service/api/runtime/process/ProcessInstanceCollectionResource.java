@@ -55,6 +55,7 @@ import io.swagger.annotations.Authorization;
  * 
  * @author Frederik Heremans
  * @author Ryan Johnston (@rjfsu)
+ * @author Zheng Ji
  */
 @RestController
 @Api(tags = { "Process Instances" }, description = "Manage Process Instances", authorizations = { @Authorization(value = "basicAuth") })
@@ -78,6 +79,7 @@ public class ProcessInstanceCollectionResource extends BaseProcessInstanceResour
             @ApiImplicitParam(name = "processDefinitionVersion", dataType = "integer", value = "Only return process instances with the given process definition version.", paramType = "query"),
             @ApiImplicitParam(name = "processDefinitionEngineVersion", dataType = "string", value = "Only return process instances with the given process definition engine version.", paramType = "query"),
             @ApiImplicitParam(name = "businessKey", dataType = "string", value = "Only return process instances with the given businessKey.", paramType = "query"),
+            @ApiImplicitParam(name = "businessKeyLike", dataType = "string", value = "Only return process instancess with the businessKey like the given key.", paramType = "query"),
             @ApiImplicitParam(name = "startedBy", dataType = "string", value = "Only return process instances started by the given user.", paramType = "query"),
             @ApiImplicitParam(name = "startedBefore", dataType = "string", format = "date-time", value = "Only return process instances started before the given date.", paramType = "query"),
             @ApiImplicitParam(name = "startedAfter", dataType = "string", format = "date-time", value = "Only return process instances started after the given date.", paramType = "query"),
@@ -141,6 +143,10 @@ public class ProcessInstanceCollectionResource extends BaseProcessInstanceResour
 
         if (allRequestParams.containsKey("businessKey")) {
             queryRequest.setProcessBusinessKey(allRequestParams.get("businessKey"));
+        }
+        
+        if (allRequestParams.containsKey("businessKeyLike")) {
+            queryRequest.setProcessBusinessKeyLike(allRequestParams.get("businessKeyLike"));
         }
         
         if (allRequestParams.containsKey("startedBy")) {
@@ -237,7 +243,7 @@ public class ProcessInstanceCollectionResource extends BaseProcessInstanceResour
         Map<String, Object> startVariables = null;
         Map<String, Object> transientVariables = null;
         Map<String, Object> startFormVariables = null;
-        if (request.getStartFormVariables() != null) {
+        if (request.getStartFormVariables() != null && request.getStartFormVariables().size()>0) {
             startFormVariables = new HashMap<>();
             for (RestVariable variable : request.getStartFormVariables()) {
                 if (variable.getName() == null) {
@@ -248,7 +254,7 @@ public class ProcessInstanceCollectionResource extends BaseProcessInstanceResour
             
         } else {
             
-            if (request.getVariables() != null) {
+            if (request.getVariables() != null && request.getVariables().size()>0) {
                 startVariables = new HashMap<>();
                 for (RestVariable variable : request.getVariables()) {
                     if (variable.getName() == null) {
@@ -258,7 +264,7 @@ public class ProcessInstanceCollectionResource extends BaseProcessInstanceResour
                 }
             }
     
-            if (request.getTransientVariables() != null) {
+            if (request.getTransientVariables() != null && request.getTransientVariables().size()>0) {
                 transientVariables = new HashMap<>();
                 for (RestVariable variable : request.getTransientVariables()) {
                     if (variable.getName() == null) {

@@ -21,7 +21,6 @@ import org.flowable.cmmn.model.FieldExtension;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
 import org.flowable.common.engine.api.delegate.Expression;
-import org.flowable.task.service.delegate.TaskListener;
 
 /**
  * @author Joram Barrez
@@ -54,18 +53,17 @@ public class DelegateExpressionPlanItemLifecycleListener implements PlanItemInst
     @Override
     public void stateChanged(DelegatePlanItemInstance planItemInstance, String oldState, String newState) {
         try {
-            DelegatePlanItemInstance delegatePlanItemInstance = (DelegatePlanItemInstance) planItemInstance;
-            Object delegate = DelegateExpressionUtil.resolveDelegateExpression(expression, (DelegatePlanItemInstance) planItemInstance, fieldExtensions);
+            Object delegate = DelegateExpressionUtil.resolveDelegateExpression(expression, planItemInstance, fieldExtensions);
 
             if (delegate instanceof PlanItemInstanceLifecycleListener) {
                 try {
                     PlanItemInstanceLifecycleListener listener = (PlanItemInstanceLifecycleListener) delegate;
-                    listener.stateChanged(delegatePlanItemInstance, oldState, newState);
+                    listener.stateChanged(planItemInstance, oldState, newState);
                 } catch (Exception e) {
-                    throw new FlowableException("Exception while invoking TaskListener: " + e.getMessage(), e);
+                    throw new FlowableException("Exception while invoking PlanItemInstanceLifecycleListener: " + e.getMessage(), e);
                 }
             } else {
-                throw new FlowableIllegalArgumentException("Delegate expression " + expression + " did not resolve to an implementation of " + TaskListener.class);
+                throw new FlowableIllegalArgumentException("Delegate expression " + expression + " did not resolve to an implementation of " + PlanItemInstanceLifecycleListener.class);
             }
 
         } catch (Exception e) {
@@ -74,7 +72,7 @@ public class DelegateExpressionPlanItemLifecycleListener implements PlanItemInst
     }
 
     /**
-     * returns the expression text for this task listener.
+     * returns the expression text for this planItemInstance lifecycle listener.
      */
     public String getExpressionText() {
         return expression.getExpressionText();

@@ -12,14 +12,17 @@
  */
 package org.flowable.cmmn.engine.impl.runtime;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
 import org.flowable.cmmn.api.runtime.PlanItemInstance;
 import org.flowable.cmmn.api.runtime.PlanItemInstanceQuery;
 import org.flowable.cmmn.api.runtime.PlanItemInstanceState;
+import org.flowable.cmmn.engine.impl.persistence.entity.PlanItemInstanceEntity;
 import org.flowable.cmmn.engine.impl.util.CommandContextUtil;
 import org.flowable.common.engine.api.FlowableIllegalArgumentException;
+import org.flowable.common.engine.api.query.CacheAwareQuery;
 import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.common.engine.impl.interceptor.CommandExecutor;
 import org.flowable.variable.service.impl.AbstractVariableQueryImpl;
@@ -27,9 +30,11 @@ import org.flowable.variable.service.impl.AbstractVariableQueryImpl;
 /**
  * @author Joram Barrez
  */
-public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanItemInstanceQuery, PlanItemInstance> implements PlanItemInstanceQuery {
+public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanItemInstanceQuery, PlanItemInstance> implements PlanItemInstanceQuery,
+        CacheAwareQuery<PlanItemInstanceEntity> {
     
     protected String caseDefinitionId;
+    protected String derivedCaseDefinitionId;
     protected String caseInstanceId;
     protected String stageInstanceId;
     protected String planItemInstanceId;
@@ -43,6 +48,8 @@ public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanIte
     protected Date createdAfter;
     protected Date lastAvailableBefore;
     protected Date lastAvailableAfter;
+    protected Date lastUnavailableBefore;
+    protected Date lastUnavailableAfter;
     protected Date lastEnabledBefore;
     protected Date lastEnabledAfter;
     protected Date lastDisabledBefore;
@@ -66,10 +73,14 @@ public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanIte
     protected String startUserId;
     protected String referenceId;
     protected String referenceType;
-    protected boolean completeable;
+    protected boolean completable;
     protected boolean onlyStages;
     protected String entryCriterionId;
     protected String exitCriterionId;
+    protected String formKey;
+    protected String extraValue;
+    protected String involvedUser;
+    protected Collection<String> involvedGroups;
     protected String tenantId;
     protected boolean withoutTenantId;
     
@@ -91,6 +102,15 @@ public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanIte
             throw new FlowableIllegalArgumentException("Case definition id is null");
         }
         this.caseDefinitionId = caseDefinitionId;
+        return this;
+    }
+
+    @Override
+    public PlanItemInstanceQuery derivedCaseDefinitionId(String derivedCaseDefinitionId) {
+        if (derivedCaseDefinitionId == null) {
+            throw new FlowableIllegalArgumentException("Derived case definition id is null");
+        }
+        this.derivedCaseDefinitionId = derivedCaseDefinitionId;
         return this;
     }
 
@@ -256,6 +276,24 @@ public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanIte
             throw new FlowableIllegalArgumentException("availableAfter is null");
         }
         this.lastAvailableAfter = availableAfter;
+        return this;
+    }
+
+    @Override
+    public PlanItemInstanceQuery planItemInstanceLastUnavailableBefore(Date unavailableBefore) {
+        if (unavailableBefore == null) {
+            throw new FlowableIllegalArgumentException("unavailableBefore is null");
+        }
+        this.lastUnavailableBefore = unavailableBefore;
+        return this;
+    }
+
+    @Override
+    public PlanItemInstanceQuery planItemInstanceLastUnavailableAfter(Date unavailableAfter) {
+        if (unavailableAfter == null) {
+            throw new FlowableIllegalArgumentException("unavailableAfter is null");
+        }
+        this.lastUnavailableAfter = unavailableAfter;
         return this;
     }
 
@@ -454,8 +492,8 @@ public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanIte
     }
     
     @Override
-    public PlanItemInstanceQuery planItemInstanceCompleteable() {
-        this.completeable = true;
+    public PlanItemInstanceQuery planItemInstanceCompletable() {
+        this.completable = true;
         return this;
     }
     
@@ -480,6 +518,42 @@ public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanIte
             throw new FlowableIllegalArgumentException("ExitCriterionId is null");
         }
         this.exitCriterionId = exitCriterionId;
+        return this;
+    }
+    
+    @Override
+    public PlanItemInstanceQuery planItemInstanceFormKey(String formKey) {
+        if (formKey == null) {
+            throw new FlowableIllegalArgumentException("formKey is null");
+        }
+        this.formKey = formKey;
+        return this;
+    }
+    
+    @Override
+    public PlanItemInstanceQuery planItemInstanceExtraValue(String extraValue) {
+        if (extraValue == null) {
+            throw new FlowableIllegalArgumentException("extraValue is null");
+        }
+        this.extraValue = extraValue;
+        return this;
+    }
+    
+    @Override
+    public PlanItemInstanceQuery involvedUser(String involvedUser) {
+        if (involvedUser == null) {
+            throw new FlowableIllegalArgumentException("involvedUser is null");
+        }
+        this.involvedUser = involvedUser;
+        return this;
+    }
+    
+    @Override
+    public PlanItemInstanceQuery involvedGroups(Collection<String> involvedGroups) {
+        if (involvedGroups == null) {
+            throw new FlowableIllegalArgumentException("involvedGroups is null");
+        }
+        this.involvedGroups = involvedGroups;
         return this;
     }
 
@@ -596,6 +670,9 @@ public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanIte
     public String getCaseDefinitionId() {
         return caseDefinitionId;
     }
+    public String getDerivedCaseDefinitionId() {
+        return derivedCaseDefinitionId;
+    }
     public String getCaseInstanceId() {
         return caseInstanceId;
     }
@@ -603,6 +680,10 @@ public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanIte
         return stageInstanceId;
     }
     public String getPlanItemInstanceId() {
+        return planItemInstanceId;
+    }
+    @Override
+    public String getId() {
         return planItemInstanceId;
     }
     public String getElementId() {
@@ -634,6 +715,12 @@ public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanIte
     }
     public Date getLastAvailableAfter() {
         return lastAvailableAfter;
+    }
+    public Date getLastUnavailableBefore() {
+        return lastUnavailableBefore;
+    }
+    public Date getLastUnavailableAfter() {
+        return lastUnavailableAfter;
     }
     public Date getLastEnabledBefore() {
         return lastEnabledBefore;
@@ -704,8 +791,8 @@ public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanIte
     public String getReferenceType() {
         return referenceType;
     }
-    public boolean isCompleteable() {
-        return completeable;
+    public boolean isCompletable() {
+        return completable;
     }
     public boolean isOnlyStages() {
         return onlyStages;
@@ -715,6 +802,18 @@ public class PlanItemInstanceQueryImpl extends AbstractVariableQueryImpl<PlanIte
     }
     public String getExitCriterionId() {
         return exitCriterionId;
+    }
+    public String getFormKey() {
+        return formKey;
+    }
+    public String getExtraValue() {
+        return extraValue;
+    }
+    public String getInvolvedUser() {
+        return involvedUser;
+    }
+    public Collection<String> getInvolvedGroups() {
+        return involvedGroups;
     }
     public String getTenantId() {
         return tenantId;

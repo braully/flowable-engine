@@ -51,6 +51,7 @@ public class SharedExecutorServiceAsyncExecutor extends DefaultAsyncJobExecutor 
 
     public SharedExecutorServiceAsyncExecutor(TenantInfoHolder tenantInfoHolder) {
         this.tenantInfoHolder = tenantInfoHolder;
+        this.unlockOwnedJobs = false;
 
         setExecuteAsyncRunnableFactory(new ExecuteAsyncRunnableFactory() {
 
@@ -116,6 +117,15 @@ public class SharedExecutorServiceAsyncExecutor extends DefaultAsyncJobExecutor 
 
     @Override
     public void start() {
+        if (isActive) {
+            return;
+        }
+
+        isActive = true;
+        
+        initializeJobEntityManager();
+        initAsyncJobExecutionThreadPool();
+
         for (String tenantId : timerJobAcquisitionRunnables.keySet()) {
             startTimerJobAcquisitionForTenant(tenantId);
             startAsyncJobAcquisitionForTenant(tenantId);

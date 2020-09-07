@@ -12,16 +12,19 @@
  */
 package org.flowable.editor.language.xml;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
+import java.io.InputStream;
+
+import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.FlowElement;
 import org.flowable.bpmn.model.Lane;
 import org.flowable.bpmn.model.Pool;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
+import org.flowable.common.engine.impl.util.io.InputStreamSource;
 import org.junit.Test;
 
 public class PoolsConverterTest extends AbstractConverterTest {
@@ -30,6 +33,14 @@ public class PoolsConverterTest extends AbstractConverterTest {
     public void convertXMLToModel() throws Exception {
         BpmnModel bpmnModel = readXMLFile();
         validateModel(bpmnModel);
+    }
+
+    @Test
+    public void convertXMLToModel2() throws Exception {
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream("pool-with-extensions.bpmn")) {
+            new BpmnXMLConverter().convertToBpmnModel(
+                    new InputStreamSource(is), true, true, "UTF-8");
+        }
     }
 
     @Test
@@ -45,23 +56,21 @@ public class PoolsConverterTest extends AbstractConverterTest {
     }
 
     private void validateModel(BpmnModel model) {
-        assertEquals(1, model.getPools().size());
+        assertThat(model.getPools())
+                .extracting(Pool::getId, Pool::getName)
+                .containsExactly(tuple("pool1", "Pool"));
         Pool pool = model.getPools().get(0);
-        assertEquals("pool1", pool.getId());
-        assertEquals("Pool", pool.getName());
         Process process = model.getProcess(pool.getId());
-        assertNotNull(process);
-        assertEquals(2, process.getLanes().size());
-        Lane lane = process.getLanes().get(0);
-        assertEquals("lane1", lane.getId());
-        assertEquals("Lane 1", lane.getName());
-        assertEquals(2, lane.getFlowReferences().size());
-        lane = process.getLanes().get(1);
-        assertEquals("lane2", lane.getId());
-        assertEquals("Lane 2", lane.getName());
-        assertEquals(2, lane.getFlowReferences().size());
+        assertThat(process.getLanes())
+                .extracting(Lane::getId, Lane::getName)
+                .containsExactly(
+                        tuple("lane1", "Lane 1"),
+                        tuple("lane2", "Lane 2")
+                );
+        assertThat(process.getLanes().get(0).getFlowReferences()).hasSize(2);
+        assertThat(process.getLanes().get(1).getFlowReferences()).hasSize(2);
+
         FlowElement flowElement = process.getFlowElement("flow1");
-        assertNotNull(flowElement);
-        assertTrue(flowElement instanceof SequenceFlow);
+        assertThat(flowElement).isInstanceOf(SequenceFlow.class);
     }
 }

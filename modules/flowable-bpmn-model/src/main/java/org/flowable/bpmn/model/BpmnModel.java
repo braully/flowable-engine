@@ -37,6 +37,7 @@ public class BpmnModel {
     protected Map<String, MessageFlow> messageFlowMap = new LinkedHashMap<>();
     protected Map<String, Message> messageMap = new LinkedHashMap<>();
     protected Map<String, String> errorMap = new LinkedHashMap<>();
+    protected Map<String, Escalation> escalationMap = new LinkedHashMap<>();
     protected Map<String, ItemDefinition> itemDefinitionMap = new LinkedHashMap<>();
     protected Map<String, DataStore> dataStoreMap = new LinkedHashMap<>();
     protected List<Pool> pools = new ArrayList<>();
@@ -84,10 +85,16 @@ public class BpmnModel {
 
     public Process getMainProcess() {
         if (!getPools().isEmpty()) {
-            return getProcess(getPools().get(0).getId());
-        } else {
-            return getProcess(null);
+            Process process = getProcess(getPools().get(0).getId());
+            if (process != null) {
+                return process;
+            }
         }
+        return getProcessWithoutPool();
+    }
+
+    private Process getProcessWithoutPool() {
+        return getProcess(null);
     }
 
     public Process getProcess(String poolRef) {
@@ -106,11 +113,15 @@ public class BpmnModel {
                 }
             }
 
-            if (poolRef == null && !foundPool) {
+            if (poolRef == null && !foundPool && process.isExecutable()) {
                 return process;
             } else if (poolRef != null && foundPool) {
                 return process;
             }
+        }
+        
+        if (poolRef == null && !processes.isEmpty()) {
+            return processes.get(0);
         }
 
         return null;
@@ -346,12 +357,16 @@ public class BpmnModel {
     }
 
     public Signal getSignal(String id) {
-        for (Signal signal : signals) {
-            if (id.equals(signal.getId())) {
-                return signal;
+        Signal foundSignal = null;
+        if (StringUtils.isNotEmpty(id)) {
+            for (Signal signal : signals) {
+                if (id.equals(signal.getId())) {
+                    foundSignal = signal;
+                    break;
+                }
             }
         }
-        return null;
+        return foundSignal;
     }
 
     public Map<String, MessageFlow> getMessageFlows() {
@@ -430,6 +445,34 @@ public class BpmnModel {
 
     public boolean containsErrorRef(String errorRef) {
         return errorMap.containsKey(errorRef);
+    }
+    
+    public Collection<Escalation> getEscalations() {
+        return escalationMap.values();
+    }
+
+    public void setEscalations(Map<String, Escalation> escalationMap) {
+        this.escalationMap = escalationMap;
+    }
+
+    public void addEscalation(String escalationRef, String escalationCode, String name) {
+        if (StringUtils.isNotEmpty(escalationRef)) {
+            escalationMap.put(escalationRef, new Escalation(escalationRef, name, escalationCode));
+        }
+    }
+    
+    public void addEscalation(Escalation escalation) {
+        if (StringUtils.isNotEmpty(escalation.getEscalationCode())) {
+            escalationMap.put(escalation.getEscalationCode(), escalation);
+        }
+    }
+
+    public boolean containsEscalationRef(String escalationRef) {
+        return escalationMap.containsKey(escalationRef);
+    }
+    
+    public Escalation getEscalation(String escalationRef) {
+        return escalationMap.get(escalationRef);
     }
 
     public Map<String, ItemDefinition> getItemDefinitions() {
